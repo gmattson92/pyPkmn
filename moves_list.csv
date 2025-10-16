@@ -1,0 +1,2 @@
+name,category,type,max_pp,base_power,accuracy,stat_target,stat_index,stat_delta,stat_accuracy,status_target,status,status_accuracy
+Body Slam,Physical,Normal,15,85,100,,,,,other,PRZ,30

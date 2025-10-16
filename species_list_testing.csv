@@ -1,0 +1,4 @@
+index,name,base_hp,base_att,base_def,base_spe,base_spc,type1,type2,randomizer_level,movepool
+128,Tauros,75,100,95,110,70,Normal,None,68,Body Slam
+95,Onix,35,45,160,70,30,Rock,Ground,80,Body Slam
+131,Lapras,130,85,80,60,95,Water,Ice,69,Body Slam
