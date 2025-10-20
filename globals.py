@@ -63,3 +63,41 @@ def get_moves_dict(name):
 
 # Define global type interactions
 # type_chart = {}
+types = ['None', 'Normal', 'Fighting', 'Flying', 'Poison', 'Ground', 'Rock',
+         'Bug', 'Ghost', 'Fire', 'Water', 'Grass', 'Electric', 'Psychic',
+         'Ice', 'Dragon']
+type_list = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],               # None
+    [1, 1, 1, 1, 1, 1, 0.5, 1, 0, 1, 1, 1, 1, 1, 1, 1],             # Normal
+    [1, 2, 1, 0.5, 0.5, 1, 2, 0.5, 0, 1, 1, 1, 1, 0.5, 2, 1],       # Fighting
+    [1, 1, 2, 1, 1, 1, 0.5, 2, 1, 1, 1, 2, 0.5, 1, 1, 1],           # Flying
+    [1, 1, 1, 1, 0.5, 0.5, 0.5, 2, 0.5, 1, 1, 2, 1, 1, 1, 1],       # Poison
+    [1, 1, 1, 0, 2, 1, 2, 0.5, 1, 2, 1, 0.5, 2, 1, 1, 1, 1],        # Ground
+    [1, 1, 0.5, 2, 1, 0.5, 1, 2, 1, 2, 1, 1, 1, 1, 2, 1],           # Rock
+    [1, 1, 0.5, 0.5, 2, 1, 1, 1, 0.5, 0.5, 1, 2, 1, 2, 1, 1],       # Bug
+    [1, 0, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1],               # Ghost
+    [1, 1, 1, 1, 1, 1, 0.5, 2, 1, 0.5, 0.5, 2, 1, 1, 2, 0.5],       # Fire
+    [1, 1, 1, 1, 1, 2, 2, 1, 1, 2, 0.5, 0.5, 1, 1, 1, 0.5],         # Water
+    [1, 1, 1, 0.5, 0.5, 2, 2, 0.5, 1, 0.5, 2, 0.5, 1, 1, 1, 0.5],   # Grass
+    [1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 2, 0.5, 0.5, 1, 1, 0.5],         # Electric
+    [1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, 1, 1],             # Psychic
+    [1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 0.5, 2, 1, 1, 0.5, 2],           # Ice
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2]                # Dragon
+]
+
+type_dict = {}
+for i, offensive in enumerate(types):
+    d = {}
+    for j, defensive in enumerate(types):
+        d[defensive] = type_list[i][j]
+    type_dict[offensive] = d
+
+
+def get_type_mult(offensive, defensive):
+    return type_dict[offensive][defensive]
+
+
+if __name__ == '__main__':
+    for offensive in type_dict.keys():
+        print(f'Offensive = {offensive}')
+        print(type_dict[offensive])

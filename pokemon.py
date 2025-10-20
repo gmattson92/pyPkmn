@@ -25,7 +25,7 @@ class Pokemon:
         self.brn_flag = False
         self.sleep_turns = 0
         self.max_hp = self.calc_stat(0)
-        self.current_hp = self.max_hp
+        self._current_hp = self.max_hp
         # self.attack = self.calc_stat(1)
         # self.defense = self.calc_stat(2)
         # self.speed = self.calc_stat(3)
@@ -37,7 +37,20 @@ class Pokemon:
     def is_fainted(self):
         return self.current_hp <= 0
 
-    def calc_stat(self, index):
+    @property
+    def current_hp(self):
+        return self._current_hp
+
+    @current_hp.setter
+    def current_hp(self, val):
+        if val < 0:
+            self._current_hp = 0
+        elif val > self.max_hp:
+            self._current_hp = self.max_hp
+        else:
+            self._current_hp = val
+
+    def calc_stat(self, index, crit=False):
         if index == 0:
             base = self.base_hp
         elif index == 1:
@@ -56,7 +69,8 @@ class Pokemon:
         stat = int(((base + dv) * 2 + int(np.sqrt(stat_exp) / 4))
                    * self.level / 100) + 5
         stage_multiplier = globals.get_stat_multiplier(self.stat_stages[index])
-        stat *= stage_multiplier
+        if not crit:
+            stat *= stage_multiplier
         if index == 0:
             stat += self.level + 5
 

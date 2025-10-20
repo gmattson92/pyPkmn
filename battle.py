@@ -1,6 +1,7 @@
 import globals
 from trainer import Trainer
 from ai import AI
+import random
 
 
 class Battle:
@@ -108,15 +109,16 @@ class Battle:
 
     def apply_direct_damage(self, move, user, other):
         # accuracy check
-        move_hits = globals.rng_check(move.accuracy)
+        acc = self.get_effective_accuracy('Damage', move, user, other)
+        move_hits = globals.rng_check(acc)
         if not move_hits:
             print('The move missed!')
             return
         # damage calculation
         damage = self.calc_damage(move, user, other)
-        effective_damage = min(damage, other.current_hp)
-        print(f'{other.name} took {effective_damage} damage!')
-        other.current_hp -= effective_damage
+        if damage != 0:
+            print(f'{other.name} took {damage} damage!')
+        other.current_hp -= damage
         # secondary status effects
         if move.status_accuracy:
             self.apply_status(move, user, other)
@@ -154,13 +156,19 @@ class Battle:
 
     def apply_status(self, move, user, other):
         target = other if move.status_target == 'other' else user
+        # Pokemon cannot be status'd by the secondary effect of a damaging
+        # move of their own type
+        if (move.category in ['Physical', 'Special'] and
+                move.type in [target.type1, target.type2]):
+            return
+        # don't apply a new status if the target already has one, except Rest
         if target.status:
-            # don't apply a new status if the target already has one
             self.overwite_status(move, target)
         else:
             # target doesn't already have a status, so proceed normally
             # accuracy check
-            move_hits = globals.rng_check(move.status_accuracy)
+            acc = self.get_effective_accuracy('Status', move, user, other)
+            move_hits = globals.rng_check(acc)
             if move_hits:
                 target.status = move.status
                 message = f'{target.name} '
@@ -177,6 +185,7 @@ class Battle:
                 if move.status == 'SLP':
                     if move.name == 'Rest':
                         message += 'fell asleep and became healthy!'
+                        target.current_hp = target.max_hp
                         target.sleep_turns = 2
                     else:
                         message += 'fell asleep!'
@@ -190,7 +199,8 @@ class Battle:
 
     def apply_stat_changes(self, move, user, other):
         # accuracy check
-        move_hits = globals.rng_check(move.stat_accuracy)
+        acc = self.get_effective_accuracy('Stat', move, user, other)
+        move_hits = globals.rng_check(acc)
         if move_hits:
             target = other if move.stat_target == 'other' else user
             message = f'{target.name}\'s '
@@ -239,6 +249,35 @@ class Battle:
         else:
             pass
 
+    def get_effective_accuracy(self, category, move, user, other):
+        acc_mult = globals.get_stat_multiplier(user.stat_stages[5])
+        eva_mult = globals.get_evasion_multiplier(other.stat_stages[6])
+        if category == 'Damage':
+            base = move.accuracy
+            return base*acc_mult*eva_mult
+        elif category == 'Stat':
+            if move.category == 'Stat':
+                base = move.stat_accuracy
+                return base*acc_mult*eva_mult
+            elif move.category in ['Physical', 'Special']:
+                return move.stat_accuracy
+            else:
+                # weird combination
+                raise ValueError(f'Unexpected combination category={category},'
+                                 f' move.category={move.category}')
+        elif category == 'Status':
+            if move.category == 'Status':
+                base = move.status_accuracy
+                return base*acc_mult*eva_mult
+            elif move.category in ['Physical', 'Special']:
+                return move.status_accuracy
+            else:
+                # weird combination
+                raise ValueError(f'Unexpected combination category={category},'
+                                 f' move.category={move.category}')
+        else:
+            raise ValueError(f'Unexpected category {category}')
+
     def swap(self, trainer, index):
         try:
             trainer.active = trainer.party_alive[index]
@@ -266,13 +305,64 @@ class Battle:
         """
         pass
 
+    def crit_rng_threshold(self, user, move):
+        spe = user.base_spe
+        thresh = spe//2
+        if move.name in ['Crabhammer', 'Karate Chop', 'Razor Leaf', 'Slash']:
+            thresh = min(8*thresh, 255)
+        return thresh
+
     def calc_damage(self, move, user, target):
-        return 10   # for testing
-        """
-        a = user.attack if move.category == 'Physical' else user.special
-        d = other.defense if move.category == 'Physical' else other.special
-        pow = move.base_power
-        """
+        # return 10   # for testing
+
+        # First check for a critical hit, because this affects stat values
+        crit = random.randrange(256) < self.crit_rng_threshold(user, move)
+        crit_mult = 2 if crit else 1
+        if crit:
+            print('Critical hit!')
+        # Determine effective att/def stats
+        if move.category == 'Physical':
+            if crit:
+                a = user.calc_stat(1, True)
+                d = target.calc_stat(2, True)
+            else:
+                a = user.attack
+                d = target.defense
+        else:
+            if crit:
+                a = user.calc_stat(4, True)
+                d = target.calc_stat(4, True)
+            else:
+                a = user.special
+                d = target.special
+        if a > 255 or d > 255:
+            a = a//4
+            d = d//4
+
+        power = move.base_power
+        base_damage = int((2*user.level*crit_mult/5 + 2)*power*a/(d*50) + 2)
+        # Apply type-dependent multipliers
+        stab = 1
+        if move.type in [user.type1, user.type2]:
+            stab = 1.5
+        type1 = globals.get_type_mult(move.type, target.type1)
+        type2 = globals.get_type_mult(move.type, target.type2)
+        if (type1*type2) > 1:
+            print('It\'s super effective!')
+        if (type1*type2) > 0 and (type1*type2) < 1:
+            print('It\'s not very effective...')
+        if (type1*type2) == 0:
+            print('It has no effect...')
+        damage = int(base_damage*stab)
+        damage = int(damage*type1)
+        damage = int(damage*type2)
+        # Apply random variation
+        if damage == 1:
+            rand_mult = 255
+        else:
+            rand_mult = random.randrange(217, 256)
+        damage = damage * rand_mult // 255
+        return damage
 
     def validate_action(self, action, trainer):
         if action[0] == 'swap':
