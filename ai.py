@@ -1,3 +1,4 @@
+import ui
 import random
 
 
@@ -25,17 +26,17 @@ class AI:
 
     def human_get_swap(self):
         print('Choose a Pokemon:')
-        self.trainer.print()
-        i = int(input())
+        # self.trainer.print()
+        i = ui.get_valid_text_swap(self.trainer)
         return ('swap', i-1)
 
     def human_get_action(self):
         print('What will you do?')
-        val = int(input('1. Use move\n2. Swap\n'))
+        val = ui.get_valid_action(self.trainer)
         if val == 1:
             print('Choose a move:')
-            self.trainer.active.print()
-            i = int(input())
+            # self.trainer.active.print()
+            i = ui.get_valid_move(self.trainer)
             return ('move', i-1)
         elif val == 2:
             return self.human_get_swap()
@@ -44,10 +45,24 @@ class AI:
 
     def random_get_swap(self):
         pa = len(self.trainer.party_alive)
-        index = random.randrange(pa)
+        while True:
+            index = random.randrange(pa)
+            if self.trainer.party_alive[index] == self.trainer.active:
+                continue
+            else:
+                break
         return ('swap', index)
 
     def random_get_action(self):
-        m = len(self.trainer.active.moves)
-        index = random.randrange(m)
-        return ('move', index)
+        total_pp = sum([move.pp for move in self.trainer.active.moves])
+        if total_pp > 0:
+            m = len(self.trainer.active.moves)
+            while True:
+                index = random.randrange(m)
+                if self.trainer.active.moves[index].pp == 0:
+                    continue
+                else:
+                    break
+            return ('move', index)
+        else:
+            return ('move', -1)

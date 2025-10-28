@@ -1,4 +1,5 @@
 import globals
+from move import Move
 from trainer import Trainer
 from ai import AI
 import random
@@ -9,6 +10,7 @@ class Battle:
     """
 
     def __init__(self, ui='text', trainer1_ai='human', trainer2_ai='random'):
+        globals.UI = ui
         self.trainer1 = Trainer('Player')
         self.trainer1.print()
         self.trainer2 = Trainer('CPU')
@@ -65,7 +67,11 @@ class Battle:
         if first_action[0] == 'swap':
             self.swap(first_trainer, first_action[1])
         if first_action[0] == 'move':
-            self.apply_move(first_trainer.active.moves[first_action[1]],
+            if first_action[1] == -1:
+                first_move = Move('Struggle')
+            else:
+                first_move = first_trainer.active.moves[first_action[1]]
+            self.apply_move(first_move,
                             first_trainer.active,
                             second_trainer.active)
             caused_faint = self.check_for_faints(first_trainer.active,
@@ -78,7 +84,11 @@ class Battle:
         if second_action[0] == 'swap':
             self.swap(second_trainer, second_action[1])
         if second_action[0] == 'move':
-            self.apply_move(second_trainer.active.moves[second_action[1]],
+            if second_action[1] == -1:
+                second_move = Move('Struggle')
+            else:
+                second_move = second_trainer.active.moves[second_action[1]]
+            self.apply_move(second_move,
                             second_trainer.active,
                             first_trainer.active)
             caused_faint = self.check_for_faints(second_trainer.active,
@@ -126,7 +136,7 @@ class Battle:
         if move.stat_accuracy:
             self.apply_stat_changes(move, user, other)
 
-    def overwite_status(self, move, target):
+    def attempt_status_overwrite(self, move, target):
         # if status is a side effect, do nothing
         if move.category != 'Status':
             return
@@ -163,7 +173,7 @@ class Battle:
             return
         # don't apply a new status if the target already has one, except Rest
         if target.status:
-            self.overwite_status(move, target)
+            self.attempt_status_overwrite(move, target)
         else:
             # target doesn't already have a status, so proceed normally
             # accuracy check
@@ -233,7 +243,10 @@ class Battle:
         # ...
 
         # decrement move's PP
-        move.pp -= 1
+        if move.name == 'Struggle':
+            print(f'{user.name} is out of PP!')
+        else:
+            move.pp -= 1
         print(f'{user.name} used {move.name}.')
 
         # damaging moves
@@ -369,9 +382,9 @@ class Battle:
             if action[1] < 0 or action[1] >= len(trainer.party_alive):
                 raise IndexError(f'Invalid party index {action[1]}')
         elif action[0] == 'move':
-            if action[1] < 0 or action[1] >= len(trainer.active.moves):
+            if action[1] < -1 or action[1] >= len(trainer.active.moves):
                 raise IndexError(f'Invalid move index {action[1]}')
-            if trainer.active.moves[action[1]].pp <= 0:
+            if action[1] > -1 and trainer.active.moves[action[1]].pp <= 0:
                 raise ValueError(
                     f'Selected move (index={action[1]}) has no PP')
         else:

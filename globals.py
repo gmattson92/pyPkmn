@@ -2,6 +2,7 @@ import pandas as pd
 import random
 
 
+UI = 'text'
 MAX_DV = 15
 MAX_STAT_EXP = 65535
 NUM_PERM_STATS = 5
