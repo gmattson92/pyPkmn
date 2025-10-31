@@ -17,11 +17,11 @@ def get_valid_action(trainer):
 
 
 def get_valid_text_action(trainer):
-    bad_input_message = 'Enter a valid number (1 or 2)'
+    bad_input_message = 'Enter a valid number (1-3)'
     while True:
         try:
-            x = int(input('1. Use move\n2. Swap\n'))
-            if x not in [1, 2]:
+            x = int(input('1. Use move\n2. Swap\n3. View party\n'))
+            if x not in [1, 2, 3]:
                 print(bad_input_message)
                 continue
             elif x == 2 and len(trainer.party_alive) == 1:
@@ -53,6 +53,8 @@ def get_valid_text_move(trainer):
     while True:
         try:
             x = int(input())
+            if x == 0:
+                break
             if x not in range(1, n_moves+1):
                 print(bad_input_message)
                 continue
@@ -77,15 +79,20 @@ def get_valid_swap(trainer):
 def get_valid_text_swap(trainer):
     bad_input_message = 'Enter a valid number'
     trainer.print()
-    n_alive = len(trainer.party_alive)
     while True:
         try:
             x = int(input())
-            if x not in range(1, n_alive+1):
+            if x == 0:
+                return x
+            if x not in range(1, len(trainer.party)+1):
                 print(bad_input_message)
                 continue
-            elif trainer.party_alive[x-1] == trainer.active:
+            elif trainer.party[x-1] == trainer.active:
                 print(f'{trainer.active.name} is already out! '
+                      'Choose a different Pokemon.')
+                continue
+            elif trainer.party[x-1].is_fainted():
+                print(f'{trainer.party[x-1].name} is fainted! '
                       'Choose a different Pokemon.')
                 continue
             else:

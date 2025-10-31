@@ -31,23 +31,37 @@ class AI:
         return ('swap', i-1)
 
     def human_get_action(self):
-        print('What will you do?')
-        val = ui.get_valid_action(self.trainer)
-        if val == 1:
-            print('Choose a move:')
-            # self.trainer.active.print()
-            i = ui.get_valid_move(self.trainer)
-            return ('move', i-1)
-        elif val == 2:
-            return self.human_get_swap()
-        else:
-            raise ValueError(f'Invalid choice {val}!')
+        while True:
+            print('What will you do?')
+            val = ui.get_valid_action(self.trainer)
+            if val == 1:
+                print('Choose a move (enter 0 for previous menu):')
+                # self.trainer.active.print()
+                i = ui.get_valid_move(self.trainer)
+                if i == 0:
+                    continue
+                else:
+                    return ('move', i-1)
+            elif val == 2:
+                print('Choose a Pokemon (enter 0 for previous menu):')
+                # self.trainer.print()
+                i = ui.get_valid_text_swap(self.trainer)
+                if i == 0:
+                    continue
+                else:
+                    return ('swap', i-1)
+            elif val == 3:
+                self.trainer.print(stats=True)
+                continue
+            else:
+                raise ValueError(f'Invalid choice {val}!')
 
     def random_get_swap(self):
-        pa = len(self.trainer.party_alive)
         while True:
-            index = random.randrange(pa)
-            if self.trainer.party_alive[index] == self.trainer.active:
+            index = random.randrange(len(self.trainer.party))
+            if self.trainer.party[index] == self.trainer.active:
+                continue
+            elif self.trainer.party[index].is_fainted():
                 continue
             else:
                 break

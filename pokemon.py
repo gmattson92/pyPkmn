@@ -35,7 +35,11 @@ class Pokemon:
         self.moves = self.randomize_moves()
 
     def is_fainted(self):
-        return self.current_hp <= 0
+        if self.current_hp <= 0:
+            self.status = 'FNT'
+            return True
+        else:
+            return False
 
     @property
     def current_hp(self):
@@ -87,6 +91,9 @@ class Pokemon:
         self.defense = self.calc_stat(2)
         self.speed = self.calc_stat(3)
         self.special = self.calc_stat(4)
+
+    def reset_stat_stages(self):
+        self.stat_stages = [0] * globals.NUM_BATTLE_STATS
 
     def randomize_moves(self):
         moves = []

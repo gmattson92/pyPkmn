@@ -36,9 +36,10 @@ class Battle:
 
     def check_for_faints(self, user, defender):
         something_fainted = False
-        user_trainer, defender_trainer = self.trainer1, self.trainer2
-        user_ai, defender_ai = self.ai1, self.ai2
-        if user == self.trainer2.active:
+        if user == self.trainer1.active:
+            user_trainer, defender_trainer = self.trainer1, self.trainer2
+            user_ai, defender_ai = self.ai1, self.ai2
+        else:
             user_trainer, defender_trainer = self.trainer2, self.trainer1
             user_ai, defender_ai = self.ai2, self.ai1
         if defender.is_fainted():
@@ -269,21 +270,27 @@ class Battle:
             base = move.accuracy
             return base*acc_mult*eva_mult
         elif category == 'Stat':
+            base = move.stat_accuracy
             if move.category == 'Stat':
-                base = move.stat_accuracy
-                return base*acc_mult*eva_mult
+                if move.stat_target == 'self':
+                    return base
+                else:
+                    return base*acc_mult*eva_mult
             elif move.category in ['Physical', 'Special']:
-                return move.stat_accuracy
+                return base
             else:
                 # weird combination
                 raise ValueError(f'Unexpected combination category={category},'
                                  f' move.category={move.category}')
         elif category == 'Status':
+            base = move.status_accuracy
             if move.category == 'Status':
-                base = move.status_accuracy
-                return base*acc_mult*eva_mult
+                if move.status_target == 'self':
+                    return base
+                else:
+                    return base*acc_mult*eva_mult
             elif move.category in ['Physical', 'Special']:
-                return move.status_accuracy
+                return base
             else:
                 # weird combination
                 raise ValueError(f'Unexpected combination category={category},'
@@ -293,7 +300,7 @@ class Battle:
 
     def swap(self, trainer, index):
         try:
-            trainer.active = trainer.party_alive[index]
+            trainer.active = index
             print(f'{trainer.name} sent out '
                   f'{trainer.active.name}!')
         except IndexError:
