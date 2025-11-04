@@ -1,3 +1,4 @@
+# import globals
 import ui
 import random
 
@@ -25,36 +26,14 @@ class AI:
             return ('swap', -1)
 
     def human_get_swap(self):
-        print('Choose a Pokemon:')
+        # if globals.UI == 'text':
+        #     ui.post_message('Choose a Pokemon:', wait=False)
         # self.trainer.print()
-        i = ui.get_valid_text_swap(self.trainer)
+        i = ui.get_valid_swap(self.trainer, False)
         return ('swap', i-1)
 
     def human_get_action(self):
-        while True:
-            print('What will you do?')
-            val = ui.get_valid_action(self.trainer)
-            if val == 1:
-                print('Choose a move (enter 0 for previous menu):')
-                # self.trainer.active.print()
-                i = ui.get_valid_move(self.trainer)
-                if i == 0:
-                    continue
-                else:
-                    return ('move', i-1)
-            elif val == 2:
-                print('Choose a Pokemon (enter 0 for previous menu):')
-                # self.trainer.print()
-                i = ui.get_valid_text_swap(self.trainer)
-                if i == 0:
-                    continue
-                else:
-                    return ('swap', i-1)
-            elif val == 3:
-                self.trainer.print(stats=True)
-                continue
-            else:
-                raise ValueError(f'Invalid choice {val}!')
+        return ui.get_valid_action(self.trainer)
 
     def random_get_swap(self):
         while True:
@@ -70,13 +49,13 @@ class AI:
     def random_get_action(self):
         total_pp = sum([move.pp for move in self.trainer.active.moves])
         if total_pp > 0:
-            m = len(self.trainer.active.moves)
+            n = len(self.trainer.active.moves)
             while True:
-                index = random.randrange(m)
+                index = random.randrange(n)
                 if self.trainer.active.moves[index].pp == 0:
                     continue
                 else:
                     break
             return ('move', index)
         else:
-            return ('move', -1)
+            return ('move', 4)

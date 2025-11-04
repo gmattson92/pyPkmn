@@ -1,5 +1,6 @@
 import globals
 from move import Move
+from ui import post_message
 import random
 import numpy as np
 
@@ -33,6 +34,7 @@ class Pokemon:
         self.recalc_stats()
         self.status = None
         self.moves = self.randomize_moves()
+        self.seen_moves = set()
 
     def is_fainted(self):
         if self.current_hp <= 0:
@@ -109,23 +111,41 @@ class Pokemon:
                 moves.append(Move('Body Slam'))
         return moves
 
-    def print_status(self):
-        print(f'{self.name} '
-              f'HP: {self.current_hp}/{self.max_hp}, '
-              f'Status: {self.status}')
+    def add_seen_move(self, move):
+        self.seen_moves.add(move)
 
-    def print_moves(self):
-        for i, move in enumerate(self.moves):
-            print(f'{i+1}. {move.name} ({move.pp}/{move.max_pp})',
-                  end=' ')
-        print()
+    def print_status(self):
+        if globals.UI == 'text':
+            post_message(f'{self.name} '
+                         f'HP: {self.current_hp}/{self.max_hp}, '
+                         f'Status: {self.status}',
+                         end='\n', wait=False)
+        else:
+            pass
+
+    def print_moves(self, indent=True, seen_moves=False):
+        if globals.UI == 'text':
+            moves = self.seen_moves if seen_moves else self.moves
+            for i, move in enumerate(moves):
+                message = '--> ' if indent else ''
+                message += f'{i+1}. {move.name} ({move.pp}/{move.max_pp})'
+                post_message(message, end=' ', wait=False)
+        else:
+            pass
 
     def print_stats(self):
-        print(f'Att: {self.attack}, Def: {self.defense}, '
-              f'Spe: {self.speed}, Spc: {self.special}')
+        if globals.UI == 'text':
+            post_message(f'Att: {self.attack}, Def: {self.defense}, '
+                         f'Spe: {self.speed}, Spc: {self.special}',
+                         end='\n', wait=False)
+        else:
+            pass
 
-    def print(self, show_stats=False):
+    def print(self, show_stats=False, newline=True,
+              indent_moves=True, seen_moves=False):
         self.print_status()
         if show_stats:
             self.print_stats()
-        self.print_moves()
+        self.print_moves(indent=indent_moves, seen_moves=seen_moves)
+        if globals.UI == 'text' and newline:
+            post_message(wait=False)

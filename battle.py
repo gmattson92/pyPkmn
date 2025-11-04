@@ -2,6 +2,7 @@ import globals
 from move import Move
 from trainer import Trainer
 from ai import AI
+from ui import post_message
 import random
 
 
@@ -12,9 +13,9 @@ class Battle:
     def __init__(self, ui='text', trainer1_ai='human', trainer2_ai='random'):
         globals.UI = ui
         self.trainer1 = Trainer('Player')
-        self.trainer1.print()
         self.trainer2 = Trainer('CPU')
-        self.trainer2.print()
+        self.trainer1.print()
+        # self.trainer2.print()
         self.ai1 = AI(trainer1_ai, trainer=self.trainer1, other=self.trainer2)
         self.ai2 = AI(trainer2_ai, trainer=self.trainer2, other=self.trainer1)
 
@@ -23,8 +24,10 @@ class Battle:
         return (self.trainer1.all_fainted() or self.trainer2.all_fainted())
 
     def turn(self):
+        post_message('\nCurrent battle status:', wait=False)
         self.trainer1.print_active()
-        self.trainer2.print_active()
+        self.trainer2.print_active(seen_moves=True)
+        post_message()
         action1 = self.ai1.get_action()
         action2 = self.ai2.get_action()
         self.validate_action(action1, self.trainer1)
@@ -44,14 +47,14 @@ class Battle:
             user_ai, defender_ai = self.ai2, self.ai1
         if defender.is_fainted():
             something_fainted = True
-            print(f'{defender.name} fainted!')
+            post_message(f'{defender.name} fainted!')
             if not defender_trainer.all_fainted():
                 swap_action = defender_ai.get_swap()
                 self.swap(defender_trainer, swap_action[1])
         # Also need to check if user fainted due to recoil/Selfdestruct
         if user.is_fainted():
             something_fainted = True
-            print(f'{user.name} fainted!')
+            post_message(f'{user.name} fainted!')
             if not user_trainer.all_fainted():
                 swap_action = user_ai.get_swap()
                 self.swap(user_trainer, swap_action[1])
@@ -68,7 +71,7 @@ class Battle:
         if first_action[0] == 'swap':
             self.swap(first_trainer, first_action[1])
         if first_action[0] == 'move':
-            if first_action[1] == -1:
+            if first_action[1] == 4:
                 first_move = Move('Struggle')
             else:
                 first_move = first_trainer.active.moves[first_action[1]]
@@ -85,7 +88,7 @@ class Battle:
         if second_action[0] == 'swap':
             self.swap(second_trainer, second_action[1])
         if second_action[0] == 'move':
-            if second_action[1] == -1:
+            if second_action[1] == 4:
                 second_move = Move('Struggle')
             else:
                 second_move = second_trainer.active.moves[second_action[1]]
@@ -103,15 +106,15 @@ class Battle:
 
     def user_can_move(self, user):
         if user.status == 'SLP':
-            print(f'{user.name} is asleep!')
+            post_message(f'{user.name} is asleep!')
             return False
         elif user.status == 'FRZ':
-            print(f'{user.name} is frozen solid!')
+            post_message(f'{user.name} is frozen solid!')
             return False
         elif user.status == 'PRZ':
             fully_prz = globals.rng_check(globals.FULL_PRZ_CHANCE)
             if fully_prz:
-                print(f'{user.name} is fully paralyzed!')
+                post_message(f'{user.name} is fully paralyzed!')
                 return False
             else:
                 return True
@@ -123,12 +126,12 @@ class Battle:
         acc = self.get_effective_accuracy('Damage', move, user, other)
         move_hits = globals.rng_check(acc)
         if not move_hits:
-            print('The move missed!')
+            post_message('The move missed!')
             return
         # damage calculation
         damage = self.calc_damage(move, user, other)
         if damage != 0:
-            print(f'{other.name} took {damage} damage!')
+            post_message(f'{other.name} took {damage} damage!')
         other.current_hp -= damage
         # secondary status effects
         if move.status_accuracy:
@@ -162,7 +165,7 @@ class Battle:
                 target.sleep_turns = 2
                 target.current_hp = target.max_hp
                 message = f'{target.name} fell asleep and became healthy!'
-            print(message)
+            post_message(message)
             return
 
     def apply_status(self, move, user, other):
@@ -203,10 +206,10 @@ class Battle:
                         target.sleep_turns = globals.sleep_turns()
                 if move.status == 'PSN':
                     message += 'was poisoned!'
-                print(message)
+                post_message(message)
             else:
                 if move.category == 'Status':
-                    print('The move missed!')
+                    post_message('The move missed!')
 
     def apply_stat_changes(self, move, user, other):
         # accuracy check
@@ -230,10 +233,10 @@ class Battle:
                 message += sharply
                 message += ('increased!' if move.stat_delta > 0
                             else 'decreased!')
-            print(message)
+            post_message(message)
         else:
             if move.category == 'Stat':
-                print('The move missed!')
+                post_message('The move missed!')
 
     def apply_move(self, move, user, other):
         can_use = self.user_can_move(user)
@@ -245,10 +248,11 @@ class Battle:
 
         # decrement move's PP
         if move.name == 'Struggle':
-            print(f'{user.name} is out of PP!')
+            post_message(f'{user.name} is out of PP!')
         else:
             move.pp -= 1
-        print(f'{user.name} used {move.name}.')
+            user.add_seen_move(move)
+        post_message(f'{user.name} used {move.name}!')
 
         # damaging moves
         if move.category in ['Physical', 'Special']:
@@ -301,23 +305,24 @@ class Battle:
     def swap(self, trainer, index):
         try:
             trainer.active = index
-            print(f'{trainer.name} sent out '
-                  f'{trainer.active.name}!')
+            post_message(f'{trainer.name} sent out '
+                         f'{trainer.active.name}!')
         except IndexError:
             print(f'Error: index {index} is out of range.')
 
     def get_priority(self, action1, action2):
         if (action1[0] == 'swap' and action2[0] == 'move'):
-            return 1
+            first = 1
         elif (action1[0] == 'move' and action2[0] == 'swap'):
-            return 2
+            first = 2
         else:
             if (self.trainer1.active.speed > self.trainer2.active.speed):
-                return 1
+                first = 1
             elif (self.trainer1.active.speed < self.trainer2.active.speed):
-                return 2
+                first = 2
             else:
-                return 1 if globals.rng_check(50) else 2
+                first = 1 if globals.rng_check(50) else 2
+        return first
 
     def end_turn(self):
         """
@@ -339,7 +344,7 @@ class Battle:
         crit = random.randrange(256) < self.crit_rng_threshold(user, move)
         crit_mult = 2 if crit else 1
         if crit:
-            print('Critical hit!')
+            post_message('Critical hit!')
         # Determine effective att/def stats
         if move.category == 'Physical':
             if crit:
@@ -368,11 +373,11 @@ class Battle:
         type1 = globals.get_type_mult(move.type, target.type1)
         type2 = globals.get_type_mult(move.type, target.type2)
         if (type1*type2) > 1:
-            print('It\'s super effective!')
+            post_message('It\'s super effective!')
         if (type1*type2) > 0 and (type1*type2) < 1:
-            print('It\'s not very effective...')
+            post_message('It\'s not very effective...')
         if (type1*type2) == 0:
-            print('It has no effect...')
+            post_message('It has no effect...')
         damage = int(base_damage*stab)
         damage = int(damage*type1)
         damage = int(damage*type2)
@@ -389,10 +394,11 @@ class Battle:
             if action[1] < 0 or action[1] >= len(trainer.party_alive):
                 raise IndexError(f'Invalid party index {action[1]}')
         elif action[0] == 'move':
-            if action[1] < -1 or action[1] >= len(trainer.active.moves):
-                raise IndexError(f'Invalid move index {action[1]}')
-            if action[1] > -1 and trainer.active.moves[action[1]].pp <= 0:
-                raise ValueError(
-                    f'Selected move (index={action[1]}) has no PP')
+            if action[1] != 4:
+                if action[1] < 0 or action[1] >= len(trainer.active.moves):
+                    raise IndexError(f'Invalid move index {action[1]}')
+                if trainer.active.moves[action[1]].pp <= 0:
+                    raise ValueError(
+                        f'Selected move (index={action[1]}) has no PP')
         else:
             raise ValueError(f'Invalid action type {action[0]}')

@@ -1,5 +1,6 @@
 import globals
 from pokemon import Pokemon
+from ui import post_message
 import random
 
 
@@ -45,15 +46,25 @@ class Trainer:
     def all_fainted(self):
         return len(self.party_alive) == 0
 
-    def print(self, stats=False):
-        p = len(self.party)
-        pa = len(self.party_alive)
-        print(f'Trainer {self.name}:', end=' ')
-        print(f'Overall status: {p-pa}/{p} Pokemon fainted. Details:')
-        for i, pkmn in enumerate(self.party):
-            print(f'{i+1}.')
-            pkmn.print(show_stats=stats)
+    def print(self, stats=False, seen_moves=False):
+        if globals.UI == 'text':
+            p = len(self.party)
+            pa = len(self.party_alive)
+            post_message(f'Trainer {self.name}:', end=' ', wait=False)
+            post_message(f'Overall status: {p-pa}/{p} Pokemon fainted. '
+                         'Details:', wait=False)
+            for i, pkmn in enumerate(self.party):
+                post_message(f'{i+1}.', end=' ', wait=False)
+                nl = False if pkmn == self.party[-1] else True
+                pkmn.print(show_stats=stats, newline=nl,
+                           indent_moves=True, seen_moves=seen_moves)
+            post_message(end='')
+        else:
+            pass
 
-    def print_active(self):
-        print(f'Trainer {self.name}\'s active Pokemon:')
-        self.active.print()
+    def print_active(self, seen_moves=False):
+        if globals.UI == 'text':
+            post_message(f'Trainer {self.name}\'s active Pokemon:', wait=False)
+            self.active.print(seen_moves=seen_moves)
+        else:
+            pass
