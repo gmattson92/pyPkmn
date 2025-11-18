@@ -14,11 +14,28 @@ MAX_SLP_TURNS = 7
 
 
 def rng_check(pct_chance):
-    x = random.random()
-    if x <= (pct_chance/100):
-        return True
+    if pct_chance == '-':
+        ret = True
     else:
-        return False
+        x = random.random()
+        if x <= (pct_chance/100):
+            ret = True
+        else:
+            ret = False
+    return ret
+
+
+def gen1_rng_threshold(pct_chance):
+    return pct_chance*255//100
+
+
+def gen1_rng_check(pct_chance):
+    if pct_chance == '-':
+        ret = True
+    else:
+        thresh = gen1_rng_threshold(pct_chance)
+        ret = random.randrange(256) < thresh
+    return ret
 
 
 def sleep_turns():
