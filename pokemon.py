@@ -80,7 +80,7 @@ class Pokemon:
         if index == 0:
             stat += self.level + 5
 
-        if index == 1 and self.brn_flag:
+        if index == 1 and self.brn_flag and not crit:
             stat = stat//2
 
         if index == 3 and self.prz_flag:
