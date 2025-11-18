@@ -1,8 +1,9 @@
 import globals
 from move import Move
 from ui import post_message
+import sys
 import random
-import numpy as np
+from math import sqrt
 
 
 class Pokemon:
@@ -24,7 +25,6 @@ class Pokemon:
         self.stat_stages = [0] * globals.NUM_BATTLE_STATS
         self.prz_flag = False
         self.brn_flag = False
-        self.sleep_turns = 0
         self.max_hp = self.calc_stat(0)
         self._current_hp = self.max_hp
         # self.attack = self.calc_stat(1)
@@ -35,6 +35,29 @@ class Pokemon:
         self.status = None
         self.moves = self.randomize_moves()
         self.seen_moves = set()
+        # now all the specific flags for status and move interactions:
+        # status interactions
+        self.sleep_turns = 0
+        self.confused = False
+        self.confusion_turns = 0
+        self.flinched = False
+        self.disabled = False
+        self.disabled_turns = 0
+        self.seeded = False
+        self.toxic = False
+        self.toxic_N = 1
+        # stat interactions
+        self.lightscreen = False
+        self.reflect = False
+        # move selection disabled
+        self.recharge = False
+        self.two_turn = False
+        self.multiturn = False
+        self.multiturn_turns = 0
+        self.trapped = False
+        self.trapped_turns = 0
+        self.trapping = False
+        self.trapping_turns = 0
 
     def is_fainted(self):
         if self.current_hp <= 0:
@@ -72,7 +95,7 @@ class Pokemon:
 
         dv = self.DVs[index]
         stat_exp = self.stat_exp[index]
-        stat = int(((base + dv) * 2 + int(np.sqrt(stat_exp) / 4))
+        stat = int(((base + dv) * 2 + int(sqrt(stat_exp) / 4))
                    * self.level / 100) + 5
         stage_multiplier = globals.get_stat_multiplier(self.stat_stages[index])
         if not crit:
@@ -99,16 +122,16 @@ class Pokemon:
 
     def randomize_moves(self):
         moves = []
-        movepool = self.movepool.split(';')
         try:
-            selected = random.sample(movepool, 4)
+            selected = random.sample(self.movepool, 4)
         except ValueError:
-            selected = movepool
+            selected = self.movepool
         for name in selected:
             try:
                 moves.append(Move(name))
-            except ValueError:
-                moves.append(Move('Body Slam'))
+            except KeyError as e:
+                print(f'randomize_moves(): name = {name} not found\n{e}')
+                sys.exit(1)
         return moves
 
     def add_seen_move(self, move):

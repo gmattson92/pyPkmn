@@ -1,5 +1,6 @@
-import pandas as pd
+# import pandas as pd
 import random
+import json
 
 
 UI = 'text'
@@ -24,6 +25,14 @@ def sleep_turns():
     return random.randrange(MIN_SLP_TURNS, MAX_SLP_TURNS+1)
 
 
+def multihit():
+    pass
+
+
+def multiturn():
+    pass
+
+
 # Define stat index mapping
 index_to_stat = {0: 'HP', 1: 'Attack', 2: 'Defense', 3: 'Speed',
                  4: 'Special', 5: 'Accuracy', 6: 'Evasion'}
@@ -45,21 +54,45 @@ def get_evasion_multiplier(stage):
 
 
 # Define global species data
-species_df = pd.read_csv('species_list_testing.csv')
-species_list = list(species_df['name'])
+# species_df = pd.read_csv('species_list_testing.csv')
+# species_list = list(species_df['name'])
+species_filename = 'data/species.json'
+with open(species_filename) as f:
+    species_dict = json.load(f)
+species_list = list(species_dict.keys())
 
 
 def get_species_dict(name):
+    '''
     return species_df[species_df['name'] == name].to_dict(orient='records')[0]
+    '''
+    try:
+        ret = species_dict[name]
+    except KeyError as e:
+        print(f'In get_species_dict(), name not found: {e}')
+        ret = None
+    return ret
 
 
 # Define global moves data
-moves_df = pd.read_csv('moves_list_testing.csv')
-moves_list = list(moves_df['name'])
+# moves_df = pd.read_csv('moves_list_testing.csv')
+# moves_list = list(moves_df['name'])
+moves_filename = 'data/moves.json'
+with open(moves_filename) as f:
+    moves_dict = json.load(f)
+moves_list = list(moves_dict.keys())
 
 
-def get_moves_dict(name):
+def get_move_dict(name):
+    '''
     return moves_df[moves_df['name'] == name].to_dict(orient='records')[0]
+    '''
+    try:
+        ret = moves_dict[name]
+    except KeyError as e:
+        print(f'In get_moves_dict(), name not found: {e}')
+        ret = None
+    return ret
 
 
 # Define global type interactions
