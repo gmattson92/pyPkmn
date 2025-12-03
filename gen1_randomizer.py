@@ -6,7 +6,7 @@ def main():
     print('Starting your battle...')
     bat = battle.Battle()
     while not bat.is_over:
-        bat.turn()
+        bat.round()
     print('Thanks for playing!')
 
 

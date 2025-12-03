@@ -39,7 +39,7 @@ class Pokemon:
         # status interactions
         self.sleep_turns = 0
         self.confused = False
-        self.confusion_turns = 0
+        self.confused_turns = 0
         self.flinched = False
         self.disabled = False
         self.disabled_turns = 0
@@ -54,10 +54,10 @@ class Pokemon:
         self.two_turn = False
         self.multiturn = False
         self.multiturn_turns = 0
-        self.trapped = False
-        self.trapped_turns = 0
         self.trapping = False
         self.trapping_turns = 0
+        self.trapped = False
+        self.trapped_turns = 0
 
     def is_fainted(self):
         if self.current_hp <= 0:

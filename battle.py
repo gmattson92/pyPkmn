@@ -24,7 +24,7 @@ class Battle:
     def is_over(self):
         return (self.trainer1.all_fainted() or self.trainer2.all_fainted())
 
-    def turn(self):
+    def round(self):
         post_message('\nCurrent battle status:', wait=False)
         self.trainer1.print_active()
         self.trainer2.print_active(seen_moves=True)
@@ -37,6 +37,34 @@ class Battle:
         apply_end_turn = self.apply_actions(first, action1, action2)
         if apply_end_turn:
             self.end_turn()
+
+    def turn(self, trainer, action, first=False):
+        apply_end_turn = True
+        if trainer == self.trainer1:
+            other_trainer = self.trainer2
+        else:
+            other_trainer = self.trainer1
+
+        if action[0] == 'swap':
+            self.swap(trainer, action[1])
+        elif action[0] == 'move':
+            if action[1] == 4:
+                move = Move('Struggle')
+            else:
+                move = trainer.active.moves[action[1]]
+            can_use_move = self.mu.before_move(trainer.active)
+            if can_use_move:
+                self.mu.apply_move(move, trainer.active,
+                                   other_trainer.active, first)
+                self.mu.after_move(trainer.active, other_trainer.active)
+                caused_faint = self.check_for_faints(trainer.active,
+                                                     other_trainer.active)
+                if caused_faint:
+                    apply_end_turn = False
+        else:
+            raise ValueError(f'Invalid action type {action[0]}')
+
+        return apply_end_turn
 
     def check_for_faints(self, user, defender):
         something_fainted = False
@@ -62,48 +90,20 @@ class Battle:
         return something_fainted
 
     def apply_actions(self, first, action1, action2):
-        apply_end_turn = True
         first_trainer = self.trainer1 if first == 1 else self.trainer2
         second_trainer = self.trainer2 if first == 1 else self.trainer1
         first_action = action1 if first == 1 else action2
         second_action = action2 if first == 1 else action1
 
         # apply first action
-        if first_action[0] == 'swap':
-            self.swap(first_trainer, first_action[1])
-        if first_action[0] == 'move':
-            if first_action[1] == 4:
-                first_move = Move('Struggle')
-            else:
-                first_move = first_trainer.active.moves[first_action[1]]
-            self.mu.apply_move(first_move,
-                               first_trainer.active,
-                               second_trainer.active)
-            caused_faint = self.check_for_faints(first_trainer.active,
-                                                 second_trainer.active)
-            if caused_faint:
-                apply_end_turn = False
-                return apply_end_turn
+        apply_end_turn1 = self.turn(first_trainer, first_action, first=True)
+        # if first, action didn't cause a faint, apply second action
+        apply_end_turn2 = False
+        if apply_end_turn1:
+            apply_end_turn2 = self.turn(second_trainer,
+                                        second_action, first=False)
 
-        # apply second action
-        if second_action[0] == 'swap':
-            self.swap(second_trainer, second_action[1])
-        if second_action[0] == 'move':
-            if second_action[1] == 4:
-                second_move = Move('Struggle')
-            else:
-                second_move = second_trainer.active.moves[second_action[1]]
-            self.mu.apply_move(second_move,
-                               second_trainer.active,
-                               first_trainer.active)
-            caused_faint = self.check_for_faints(second_trainer.active,
-                                                 first_trainer.active)
-            if caused_faint:
-                apply_end_turn = False
-                return apply_end_turn
-
-        # if nothing fainted
-        return apply_end_turn
+        return apply_end_turn1 and apply_end_turn2
 
     def swap(self, trainer, index):
         try:
