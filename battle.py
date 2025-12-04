@@ -34,12 +34,18 @@ class Battle:
         self.validate_action(action1, self.trainer1)
         self.validate_action(action2, self.trainer2)
         first = self.get_priority(action1, action2)
-        apply_end_turn = self.apply_actions(first, action1, action2)
-        if apply_end_turn:
-            self.end_turn()
+        apply_end_round, l_pkmn = self.apply_actions(first, action1, action2)
+        if apply_end_round:
+            self.end_round(l_pkmn)
 
     def turn(self, trainer, action, first=False):
-        apply_end_turn = True
+        """
+        Applies this trainer's action.
+        Returns (apply_end_round, pkmn_included_in_end_round) -- specifically,
+        if this Pokemon moved, pkmn_included_in_end_round = trainer.active
+        """
+        apply_end_round = True
+        return_pkmn = False
         if trainer == self.trainer1:
             other_trainer = self.trainer2
         else:
@@ -56,15 +62,19 @@ class Battle:
             if can_use_move:
                 self.mu.apply_move(move, trainer.active,
                                    other_trainer.active, first)
-                self.mu.after_move(trainer.active, other_trainer.active)
                 caused_faint = self.check_for_faints(trainer.active,
                                                      other_trainer.active)
                 if caused_faint:
-                    apply_end_turn = False
+                    apply_end_round = False
+                else:
+                    self.mu.after_move(trainer.active, other_trainer.active)
+            else:
+                return_pkmn = True
         else:
             raise ValueError(f'Invalid action type {action[0]}')
 
-        return apply_end_turn
+        pkmn_l = [trainer.active] if return_pkmn else []
+        return apply_end_round, pkmn_l
 
     def check_for_faints(self, user, defender):
         something_fainted = False
@@ -96,14 +106,16 @@ class Battle:
         second_action = action2 if first == 1 else action1
 
         # apply first action
-        apply_end_turn1 = self.turn(first_trainer, first_action, first=True)
-        # if first, action didn't cause a faint, apply second action
-        apply_end_turn2 = False
-        if apply_end_turn1:
-            apply_end_turn2 = self.turn(second_trainer,
-                                        second_action, first=False)
+        apply_end_round1, pkmn_l1 = self.turn(first_trainer, first_action,
+                                              first=True)
+        # if first action didn't cause a faint, apply second action
+        apply_end_round2 = False
+        pkmn_l2 = []
+        if apply_end_round1:
+            apply_end_round2, pkmn_l2 = self.turn(second_trainer,
+                                                  second_action, first=False)
 
-        return apply_end_turn1 and apply_end_turn2
+        return (apply_end_round1 and apply_end_round2), (pkmn_l1 + pkmn_l2)
 
     def swap(self, trainer, index):
         try:
@@ -127,11 +139,17 @@ class Battle:
                 first = 1 if globals.rng_check(50) else 2
         return first
 
-    def end_turn(self):
+    def end_round(self, l_pkmn):
         """
-        Apply any Poison/Burn/Leech Seed damage and decrement status counters
+        Apply any Poison/Burn/Leech Seed damage that was skipped by a Pokemon
+        missing its turn.
         """
-        pass
+        for pkmn in l_pkmn:
+            user = (self.trainer1.active if pkmn == self.trainer1.active
+                    else self.trainer2.active)
+            other = (self.trainer2.active if pkmn == self.trainer1.active
+                     else self.trainer1.active)
+            self.mu.apply_recurring_damage(user, other)
 
     def validate_action(self, action, trainer):
         if action[0] == 'swap':

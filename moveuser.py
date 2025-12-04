@@ -502,6 +502,8 @@ class MoveUser:
                         target.sleep_turns = globals.sleep_turns()
                 if move.status == 'PSN':
                     message += 'was poisoned!'
+                if move.status == 'TXC':
+                    message += 'was badly poisoned!'
                 post_message(message)
             else:
                 if move.category == 'Status':
