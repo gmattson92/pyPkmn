@@ -145,11 +145,11 @@ class Battle:
         missing its turn.
         """
         for pkmn in l_pkmn:
-            user = (self.trainer1.active if pkmn == self.trainer1.active
-                    else self.trainer2.active)
+            affected = (self.trainer1.active if pkmn == self.trainer1.active
+                        else self.trainer2.active)
             other = (self.trainer2.active if pkmn == self.trainer1.active
                      else self.trainer1.active)
-            self.mu.apply_recurring_damage(user, other)
+            self.mu.apply_recurring_damage(affected, other)
 
     def validate_action(self, action, trainer):
         if action[0] == 'swap':

@@ -1,4 +1,5 @@
 import globals
+from statusmanager import StatusManager
 from move import Move
 from ui import post_message
 import sys
@@ -32,36 +33,13 @@ class Pokemon:
         # self.speed = self.calc_stat(3)
         # self.special = self.calc_stat(4)
         self.recalc_stats()
-        self.status = None
+        self.sm = StatusManager(self)
         self.moves = self.randomize_moves()
         self.seen_moves = set()
-        # now all the specific flags for status and move interactions:
-        # status interactions
-        self.sleep_turns = 0
-        self.confused = False
-        self.confused_turns = 0
-        self.flinched = False
-        self.disabled = False
-        self.disabled_turns = 0
-        self.seeded = False
-        self.toxic = False
-        self.toxic_N = 1
-        # stat interactions
-        self.lightscreen = False
-        self.reflect = False
-        # move selection disabled
-        self.recharge = False
-        self.two_turn = False
-        self.multiturn = False
-        self.multiturn_turns = 0
-        self.trapping = False
-        self.trapping_turns = 0
-        self.trapped = False
-        self.trapped_turns = 0
 
     def is_fainted(self):
         if self.current_hp <= 0:
-            self.status = 'FNT'
+            self.sm.status = 'FNT'
             return True
         else:
             return False
@@ -141,7 +119,7 @@ class Pokemon:
         if globals.UI == 'text':
             post_message(f'{self.name} '
                          f'HP: {self.current_hp}/{self.max_hp}, '
-                         f'Status: {self.status}',
+                         f'Status: {self.sm.status}',
                          end='\n', wait=False)
         else:
             pass

@@ -35,44 +35,39 @@ class MoveUser:
         can_move_recharge = self.can_move_recharge(user)
 
         # Check for trapping moves
-        if user.trapped:
+        if user.sm.get_counter('trapped'):
             can_move_trapped = False
-            self.decrement_counter(user, 'trapped')
+            user.sm.decrement_counter('trapped')
         else:
             can_move_trapped = True
-        # Decrement trapping counter
-        if user.trapping:
-            self.decrement_counter(user, 'trapping')
+        # Corresponding trapping counter
+        if user.sm.get_counter('trapping'):
+            user.sm.decrement_counter('trapping')
 
         can_move_nonstatus = (can_move_flinch and can_move_recharge
                               and can_move_trapped)
         can_move = can_move_status and can_move_nonstatus
 
-        # Confusion and Disable, which are paused  during sleep, freeze,
+        # Confusion and Disable, which are paused during sleep, freeze,
         # flinches, and recharge turns, but do decrement during full paralysis.
         decrement = can_move or (fully_prz and can_move_nonstatus)
         if decrement:
-            if user.disabled:
-                self.decrement_counter(user, 'disable')
-            if user.confused:
-                self.decrement_counter(user, 'confusion')
+            if user.sm.get_counter('disable'):
+                user.sm.decrement_counter('disable')
+            if user.sm.get_counter('confusion'):
+                user.sm.decrement_counter('confusion')
 
         # Multiturn, which is more complicated -- hits in confusion and full
         # paralysis reset the move completely; sleep, freeze and trapped all
         # pause the move but do not decrement the counter.
-        do_not_decrement = user.status in ['SLP', 'FRZ'] or user.trapped
-        reset = fully_prz
-        if not do_not_decrement:
-            if user.multiturn:
-                self.decrement_counter(user, 'multiturn')
-        if reset:
-            if user.multiturn:
-                while True:
-                    try:
-                        self.decrement_counter(user, 'multiturn')
-                    except:
-                        break
-
+        if user.sm.get_counter('multiturn'):
+            do_not_decrement = (user.sm.status in ['SLP', 'FRZ'] or
+                                user.sm.get_counter('trapped'))
+            reset = fully_prz
+            if not do_not_decrement:
+                user.sm.decrement_counter('multiturn')
+            if reset:
+                user.sm.reset_counter('multiturn')
 
         return can_move
 
@@ -88,13 +83,14 @@ class MoveUser:
         # the following flag to check whether they should decrement
         fully_prz = False
         # Now check for status conditions
-        if pkmn.status == 'SLP':
+        if pkmn.sm.status == 'SLP':
             can_move_status = False
-            self.decrement_counter(pkmn, 'sleep')
-        elif pkmn.status == 'FRZ':
+            msg = pkmn.sm.decrement_counter('sleep')
+            post_message(msg)
+        elif pkmn.sm.status == 'FRZ':
             post_message(f'{pkmn.name} is frozen solid!')
             can_move_status = False
-        elif pkmn.status == 'PRZ':
+        elif pkmn.sm.status == 'PRZ':
             fully_prz = globals.rng_check(globals.FULL_PRZ_CHANCE)
             if fully_prz:
                 post_message(f'{pkmn.name} is fully paralyzed!')
@@ -107,104 +103,104 @@ class MoveUser:
         return (can_move_status, fully_prz)
 
     def can_move_flinch(self, pkmn):
-        if pkmn.flinched:
+        if pkmn.sm.get_flag('flinch'):
+            can_move_flinch = False
             post_message(f'{pkmn.name} flinched!')
             # Reset the flinch flag
-            pkmn.flinched = False
-            can_move_flinch = False
+            pkmn.sm.reset_flag('flinch')
         else:
             can_move_flinch = True
         return can_move_flinch
 
     def can_move_recharge(self, pkmn):
-        if pkmn.recharge:
+        if pkmn.sm.get_flag('recharge'):
             can_move_recharge = False
             post_message(f'{pkmn.name} has to recharge!')
             # Reset the recharge flag, unless pkmn is frozen
-            if pkmn.status != 'FRZ':
-                pkmn.recharge = False
+            if pkmn.sm.status != 'FRZ':
+                pkmn.sm.reset_flag('recharge')
         else:
             can_move_recharge = True
         return can_move_recharge
 
-    def decrement_counter(self, pkmn, which):
-        d = {'sleep': {'cnd': (pkmn.status == 'SLP'),   # condition
-                       'cnt': 'sleep_turns',            # counter attribute
-                       'att': 'status',                 # attribute to update
-                       'val': None,                     # new value
-                       'cm': 'is fast asleep!',         # condition message
-                       'rcm': 'woke up!'},              # removed condition msg
-             'confusion': {'cnd': pkmn.confused,
-                           'cnt': 'confused_turns',
-                           'att': 'confused',
-                           'val': False,
-                           'cm': 'is confused!',
-                           'rcm': 'snapped out of confusion!'},
-             'disable': {'cnd': pkmn.disabled,
-                         'cnt': 'disabled_turns',
-                         'att': 'disabled',
-                         'val': False,
-                         'cm': 'is disabled!',
-                         'rcm': 'is no longer disabled!'},
-             'trapped': {'cnd': pkmn.trapped,
-                         'cnt': 'trapped_turns',
-                         'att': 'trapped',
-                         'val': False,
-                         'cm': 'cannot move!',
-                         'rcm': 'was released!'},
-             'trapping': {'cnd': pkmn.trapping,
-                          'cnt': 'trapping_turns',
-                          'att': 'trapping',
-                          'val': False,
-                          'cm': '',
-                          'rcm': ''},
-             'multiturn': {'cnd': pkmn.multiturn,
-                           'cnt': 'multiturn_turns',
-                           'att': 'multiturn',
-                           'val': False,
-                           'cm': '',
-                           'rcm': ''}}
+    # def decrement_counter(self, pkmn, which):
+    #     d = {'sleep': {'cnd': (pkmn.status == 'SLP'),   # condition
+    #                    'cnt': 'sleep_turns',            # counter attribute
+    #                    'att': 'status',                 # attribute to update
+    #                    'val': None,                     # new value
+    #                    'cm': 'is fast asleep!',         # condition message
+    #                    'rcm': 'woke up!'},              # removed condition msg
+    #          'confusion': {'cnd': pkmn.confused,
+    #                        'cnt': 'confused_turns',
+    #                        'att': 'confused',
+    #                        'val': False,
+    #                        'cm': 'is confused!',
+    #                        'rcm': 'snapped out of confusion!'},
+    #          'disable': {'cnd': pkmn.disabled,
+    #                      'cnt': 'disabled_turns',
+    #                      'att': 'disabled',
+    #                      'val': False,
+    #                      'cm': 'is disabled!',
+    #                      'rcm': 'is no longer disabled!'},
+    #          'trapped': {'cnd': pkmn.trapped,
+    #                      'cnt': 'trapped_turns',
+    #                      'att': 'trapped',
+    #                      'val': False,
+    #                      'cm': 'cannot move!',
+    #                      'rcm': 'was released!'},
+    #          'trapping': {'cnd': pkmn.trapping,
+    #                       'cnt': 'trapping_turns',
+    #                       'att': 'trapping',
+    #                       'val': False,
+    #                       'cm': '',
+    #                       'rcm': ''},
+    #          'multiturn': {'cnd': pkmn.multiturn,
+    #                        'cnt': 'multiturn_turns',
+    #                        'att': 'multiturn',
+    #                        'val': False,
+    #                        'cm': '',
+    #                        'rcm': ''}}
 
-        implemented_conditions = ['sleep', 'confusion', 'disable',
-                                  'trapped', 'trapping', 'multiturn']
-        if which not in implemented_conditions:
-            raise ValueError(f'In decrement_counter(): invalid which={which}')
+    #     implemented_conditions = ['sleep', 'confusion', 'disable',
+    #                               'trapped', 'trapping', 'multiturn']
+    #     if which not in implemented_conditions:
+    #         raise ValueError(f'In decrement_counter(): invalid which={which}')
 
-        condition_applies = d[which]['cnd']
-        counter_attr = d[which]['cnt']
-        attr_to_update = d[which]['att']
-        updated_val = d[which]['val']
-        condition_message = d[which]['cm']
-        removed_condition_message = d[which]['rcm']
+    #     condition_applies = d[which]['cnd']
+    #     counter_attr = d[which]['cnt']
+    #     attr_to_update = d[which]['att']
+    #     updated_val = d[which]['val']
+    #     condition_message = d[which]['cm']
+    #     removed_condition_message = d[which]['rcm']
 
-        current_attr = getattr(pkmn, attr_to_update)
-        current_counter_val = getattr(pkmn, counter_attr)
-        if not condition_applies:
-            raise ValueError(f'In decrement_counter(): condition does not '
-                             f'apply! Details:\nname={pkmn.name}, '
-                             f'which={which}, attr={current_attr}, '
-                             f'counter={current_counter_val}')
-        # Double check that the counter is nonzero
-        if current_counter_val < 1:
-            raise ValueError(f'In decrement_counter(): condition applies but '
-                             f'counter is invalid! Details:\nname={pkmn.name},'
-                             f' which={which}, attr={current_attr}, '
-                             f'counter={current_counter_val}')
-        # Then decrement counter, and reset status/flag if counter is 0
-        new_counter_val = current_counter_val - 1
-        setattr(pkmn, counter_attr, new_counter_val)
-        message = f'{pkmn.name} '
-        if new_counter_val == 0:
-            setattr(pkmn, attr_to_update, updated_val)
-            if which == 'multiturn':
-                pkmn.confused = True
-                pkmn.confused_turns = globals.get_confusion_turns()
-                post_message(f'{pkmn.name} became fatigued!')
-            message += removed_condition_message
-        else:
-            message += condition_message
-        if which not in ['trapping', 'multiturn']:
-            post_message(message)
+    #     current_attr = getattr(pkmn, attr_to_update)
+    #     current_counter_val = getattr(pkmn, counter_attr)
+    #     if not condition_applies:
+    #         raise ValueError(f'In decrement_counter(): condition does not '
+    #                          f'apply! Details:\nname={pkmn.name}, '
+    #                          f'which={which}, attr={current_attr}, '
+    #                          f'counter={current_counter_val}')
+    #     # Double check that the counter is nonzero
+    #     if current_counter_val < 1:
+    #         raise ValueError(f'In decrement_counter(): condition applies but '
+    #                          f'counter is invalid! Details:\nname={pkmn.name},'
+    #                          f' which={which}, attr={current_attr}, '
+    #                          f'counter={current_counter_val}')
+    #     # Then decrement counter, and reset status/flag if counter is 0
+    #     new_counter_val = current_counter_val - 1
+    #     setattr(pkmn, counter_attr, new_counter_val)
+    #     message = f'{pkmn.name} '
+    #     if new_counter_val == 0:
+    #         setattr(pkmn, attr_to_update, updated_val)
+    #         if which == 'multiturn':
+    #             pkmn.confused = True
+    #             pkmn.confused_turns = globals.get_confusion_turns()
+    #             post_message(f'{pkmn.name} became fatigued!')
+    #         message += removed_condition_message
+    #     else:
+    #         message += condition_message
+    #     if which not in ['trapping', 'multiturn']:
+    #         post_message(message)
 
     def after_move(self, user, other):
         """
@@ -217,30 +213,33 @@ class MoveUser:
         """
         Apply recurring damage from burn, poison, leech seed
         """
-        if user.status in ['BRN', 'PSN', 'TXC']:
+        if user.sm.status in ['BRN', 'PSN', 'TXC']:
             self.recurring_damage(user)
-        if user.seeded:
+        if user.sm.get_flag('seed'):
             dmg = self.recurring_damage(user, seed=True)
             self.seed_heal(other, dmg)
 
     def recurring_damage(self, target, seed=False):
-        damage = target.toxic_N*(target.max_hp//16)
+        counter = target.sm.get_counter('toxic')
+        toxic_active = counter.val
+        toxic_N = counter.cval
+        damage = toxic_N*(target.max_hp//16)
         target.current_hp -= damage
         if seed:
             post_message(f'{target.name}\'s health was drained!')
         else:
             message = f'{target.name} was affected by its '
-            if target.status == 'BRN':
+            if target.sm.status == 'BRN':
                 message += 'burn!'
-            elif target.status in ['PSN', 'TXC']:
+            elif target.sm.status in ['PSN', 'TXC']:
                 message += 'poison!'
             else:
                 raise ValueError('Called recurring_damage() on healthy Pokemon'
                                  f': name={target.name}'
-                                 f', status={target.status}')
+                                 f', status={target.sm.status}')
             post_message(message)
-        if target.toxic and target.toxic_N < 15:
-            target.toxic_N += 1
+        if toxic_active:
+            target.sm.increment_toxic()
         return damage
 
     def seed_heal(self, target, amount):
@@ -255,12 +254,8 @@ class MoveUser:
         hits_self = self.confusion_check(user, other)
         if hits_self:
             # Reset the multiturn status when hit in confusion
-            if user.multiturn:
-                while True:
-                    try:
-                        self.decrement_counter(user, 'multiturn')
-                    except:
-                        break
+            if user.sm.get_counter('multiturn'):
+                user.sm.reset_counter('multiturn')
             # Don't do anything of the usual stuff for using this move
             return
 
@@ -291,7 +286,7 @@ class MoveUser:
         Returns bool hits_self.
         """
         hits_self = False
-        if user.confused:
+        if user.sm.get_counter('confusion'):
             hits_self = globals.rng_check(50)
             if hits_self:
                 dmg = self.confusion_damage(user, other)
@@ -315,7 +310,7 @@ class MoveUser:
         if user.brn_flag:
             a = a//2
         """
-        if other.reflect:
+        if user.sm.get_flag('reflect'):
             d *= 2
             if d > 1024:
                 d = d % 1024
@@ -458,6 +453,7 @@ class MoveUser:
         return thresh
 
     def get_fixed_damage(self, move, user, target):
+        # Need to implement
         return min(10, target.current_hp)   # for testing
 
     def apply_status(self, move, user, other):
@@ -472,7 +468,7 @@ class MoveUser:
                 'Ground' in [target.type1, target.type2]):
             return
         # don't apply a new status if the target already has one, except Rest
-        if target.status:
+        if target.sm.status:
             self.attempt_status_overwrite(move, target)
         else:
             # target doesn't already have a status, so proceed normally
@@ -480,7 +476,7 @@ class MoveUser:
             acc = self.get_effective_accuracy('Status', move, user, other)
             move_hits = globals.rng_check(acc)
             if move_hits:
-                target.status = move.status
+                target.sm.status = move.status
                 message = f'{target.name} '
                 if move.status == 'PRZ':
                     message += 'became paralyzed!'
@@ -496,14 +492,16 @@ class MoveUser:
                     if move.name == 'Rest':
                         message += 'fell asleep and became healthy!'
                         target.current_hp = target.max_hp
-                        target.sleep_turns = 2
+                        turns = 2
                     else:
                         message += 'fell asleep!'
-                        target.sleep_turns = globals.sleep_turns()
+                        turns = globals.sleep_turns()
+                    target.sm.turn_on_counter('sleep', turns)
                 if move.status == 'PSN':
                     message += 'was poisoned!'
                 if move.status == 'TXC':
                     message += 'was badly poisoned!'
+                    target.sm.turn_on_counter('toxic', 1)
                 post_message(message)
             else:
                 if move.category == 'Status':
@@ -518,22 +516,22 @@ class MoveUser:
             # the exception is the move Rest, which overwrites status
             if move.name != 'Rest':
                 message = f'{target.name} is already '
-                if target.status == 'PRZ':
+                if target.sm.status == 'PRZ':
                     message += 'paralyzed!'
-                if target.status == 'BRN':
+                if target.sm.status == 'BRN':
                     message += 'burned!'
-                if target.status == 'FRZ':
+                if target.sm.status == 'FRZ':
                     message += 'frozen!'
-                if target.status == 'SLP':
+                if target.sm.status == 'SLP':
                     message += 'asleep!'
-                if target.status == 'PSN':
+                if target.sm.status in ['PSN', 'TXC']:
                     message += 'poisoned!'
             else:
                 # Rest special case
-                target.status = 'SLP'
-                target.sleep_turns = 2
+                target.sm.status = 'SLP'
                 target.current_hp = target.max_hp
                 message = f'{target.name} fell asleep and became healthy!'
+                target.sm.turn_on_counter('sleep', 2)
             post_message(message)
             return
 
