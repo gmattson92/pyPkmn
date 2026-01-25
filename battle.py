@@ -3,6 +3,7 @@ from move import Move
 from trainer import Trainer
 from ai import AI
 from moveuser import MoveUser
+from turnmanager import TurnManager
 from ui import post_message
 
 
@@ -19,6 +20,7 @@ class Battle:
         self.ai1 = AI(trainer1_ai, trainer=self.trainer1, other=self.trainer2)
         self.ai2 = AI(trainer2_ai, trainer=self.trainer2, other=self.trainer1)
         self.mu = MoveUser()
+        self.tm = TurnManager(self.mu)
 
     @property
     def is_over(self):
@@ -42,7 +44,8 @@ class Battle:
         """
         Applies this trainer's action.
         Returns (apply_end_round, pkmn_included_in_end_round) -- specifically,
-        if this Pokemon moved, pkmn_included_in_end_round = trainer.active
+        if this Pokemon fails to move,
+        pkmn_included_in_end_round = [trainer.active]
         """
         apply_end_round = True
         return_pkmn = False
@@ -58,17 +61,26 @@ class Battle:
                 move = Move('Struggle')
             else:
                 move = trainer.active.moves[action[1]]
-            can_use_move = self.mu.before_move(trainer.active)
-            if can_use_move:
+            bmd = self.tm.before_move(trainer.active, other_trainer.active)
+            if bmd['can_move']:
+                # Use the move
                 self.mu.apply_move(move, trainer.active,
                                    other_trainer.active, first)
+                # If the move caused a faint, recurring damage is skipped
                 caused_faint = self.check_for_faints(trainer.active,
                                                      other_trainer.active)
                 if caused_faint:
                     apply_end_round = False
                 else:
-                    self.mu.after_move(trainer.active, other_trainer.active)
+                    self.tm.after_move(trainer.active, other_trainer.active)
+                    # If recurring damage caused a faint, skip end_round
+                    caused_faint = self.check_for_faints(trainer.active,
+                                                         other_trainer.active)
+                    if caused_faint:
+                        apply_end_round = False
             else:
+                # If Pokemon could not move, recurring damage applies in
+                # end_round
                 return_pkmn = True
         else:
             raise ValueError(f'Invalid action type {action[0]}')
@@ -149,7 +161,7 @@ class Battle:
                         else self.trainer2.active)
             other = (self.trainer2.active if pkmn == self.trainer1.active
                      else self.trainer1.active)
-            self.mu.apply_recurring_damage(affected, other)
+            self.tm.apply_all_recurring_damage(affected, other)
 
     def validate_action(self, action, trainer):
         if action[0] == 'swap':

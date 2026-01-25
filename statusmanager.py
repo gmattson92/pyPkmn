@@ -61,7 +61,7 @@ class Counter(Flag):
     @cval.setter
     def cval(self, new_val):
         if self._cval < 0:
-            raise ValueError(f'Counter {self.name} updated to negative value'
+            raise ValueError(f'Counter {self.name} updated to negative value '
                              f'{new_val}!')
         self._cval = new_val
 
@@ -259,7 +259,11 @@ class StatusManager:
         counter = self.get_counter(name)
         message = counter.decrement()
         if not counter.val:
+            # Remove from activate counters
             self.active_counters.remove(counter)
+            # For waking up from sleep, update pokemon's non-volatile status
+            if name == 'sleep':
+                self.status = None
         return message
 
     def increment_toxic(self):
