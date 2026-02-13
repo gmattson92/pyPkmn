@@ -99,6 +99,11 @@ class ToxicCounter(Counter):
         if self.cval < 15:
             self.cval += 1
 
+    def reset(self):
+        message = super().reset()
+        self.cval = 1
+        return message
+
 
 class StatusManager:
     """
@@ -197,6 +202,26 @@ class StatusManager:
                       'can_select_move': False}
         self.flags[d_two_turn['name']] = Flag(**d_two_turn)
 
+    def retreat(self):
+        """
+        Resets status flags and counters when the Pokemon swaps out.
+        """
+        # Convert Toxic to regular Poison:
+        if self.status == 'TXC':
+            self.status = 'PSN'
+        """
+        # Reset Pokemon's prz and brn flags if no longer statused (via Rest)
+        if self.status != 'PRZ':
+            self.pkmn.prz_flag = False
+        if self.status != 'BRN':
+            self.pkmn.brn_flag = False
+        """
+        # Reset all other flags and counters
+        for flag in self.active_flags:
+            flag.reset()
+        for counter in self.active_counters:
+            counter.reset()
+
     def update_can_select_move(self):
         # Update based on active flags
         new_val = True
@@ -213,16 +238,18 @@ class StatusManager:
         self.update_can_select_move()
         return self._can_select_move
 
+    '''
     @can_select_move.setter
     def can_select_move(self, val):
         self._can_select_move = val
+    '''
 
     def get_flag(self, name):
         flag = None
         try:
             flag = self.flags[name]
         except KeyError:
-            pass
+            print(f'No Flag {name} found!')
         return flag
 
     def turn_on_flag(self, name):
@@ -240,7 +267,7 @@ class StatusManager:
         try:
             counter = self.counters[name]
         except KeyError:
-            pass
+            print(f'No Counter {name} found!')
         return counter
 
     def turn_on_counter(self, name, initial_cval):
@@ -259,7 +286,7 @@ class StatusManager:
         counter = self.get_counter(name)
         message = counter.decrement()
         if not counter.val:
-            # Remove from activate counters
+            # Remove from active counters
             self.active_counters.remove(counter)
             # For waking up from sleep, update pokemon's non-volatile status
             if name == 'sleep':

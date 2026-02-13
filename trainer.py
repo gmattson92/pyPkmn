@@ -31,7 +31,6 @@ class Trainer:
 
     @active.setter
     def active(self, index):
-        # self._active.reset_stat_stages()
         if self._active == self.party[index]:
             raise ValueError('Trying to swap to Pokemon already out! '
                              f'(index = {index})')
@@ -39,6 +38,7 @@ class Trainer:
             raise ValueError('Trying to swap to a fainted Pokemon! '
                              f'(index = {index})')
         else:
+            self._active.retreat()
             self._active = self.party[index]
             self._active.reset_stat_stages()
             self._active.recalc_stats()

@@ -24,14 +24,21 @@ class Pokemon:
         self.DVs = [globals.MAX_DV] * globals.NUM_PERM_STATS
         self.stat_exp = [globals.MAX_STAT_EXP] * globals.NUM_PERM_STATS
         self.stat_stages = [0] * globals.NUM_BATTLE_STATS
+        self.base_stats = [0] * globals.NUM_PERM_STATS
+        self.fill_base_stats()
+        self.stats = [0] * (globals.NUM_PERM_STATS - 1)
+        """
         self.prz_flag = False
         self.brn_flag = False
+        """
         self.max_hp = self.calc_stat(0)
         self._current_hp = self.max_hp
-        # self.attack = self.calc_stat(1)
-        # self.defense = self.calc_stat(2)
-        # self.speed = self.calc_stat(3)
-        # self.special = self.calc_stat(4)
+        """
+        self.attack = self.calc_stat(1)
+        self.defense = self.calc_stat(2)
+        self.speed = self.calc_stat(3)
+        self.special = self.calc_stat(4)
+        """
         self.recalc_stats()
         self.sm = StatusManager(self)
         self.moves = self.randomize_moves()
@@ -57,43 +64,86 @@ class Pokemon:
         else:
             self._current_hp = val
 
-    def calc_stat(self, index, crit=False):
-        if index == 0:
-            base = self.base_hp
-        elif index == 1:
-            base = self.base_att
-        elif index == 2:
-            base = self.base_def
-        elif index == 3:
-            base = self.base_spe
-        elif index == 4:
-            base = self.base_spc
-        else:
-            raise ValueError(f'Invalid index = {index}')
+    @property
+    def attack(self):
+        return self.stats[0]
 
+    @attack.setter
+    def attack(self, val):
+        self.stats[0] = val
+
+    @property
+    def defense(self):
+        return self.stats[1]
+
+    @property
+    def speed(self):
+        return self.stats[2]
+
+    @speed.setter
+    def speed(self, val):
+        self.stats[2] = val
+
+    @property
+    def special(self):
+        return self.stats[3]
+
+    def fill_base_stats(self):
+        self.base_stats[0] = self.base_hp
+        self.base_stats[1] = self.base_att
+        self.base_stats[2] = self.base_def
+        self.base_stats[3] = self.base_spe
+        self.base_stats[4] = self.base_spc
+
+    def calc_stat(self, index, crit=False):
+        base = self.base_stats[index]
         dv = self.DVs[index]
         stat_exp = self.stat_exp[index]
         stat = int(((base + dv) * 2 + int(sqrt(stat_exp) / 4))
                    * self.level / 100) + 5
+        # Max HP behaves a little differently
+        if index == 0:
+            stat += self.level + 5
+        # Apply stage modifier, except for critical hits
         stage_multiplier = globals.get_stat_multiplier(self.stat_stages[index])
         if not crit:
             stat *= stage_multiplier
-        if index == 0:
-            stat += self.level + 5
 
+        """
+        # Removed -- status debuff has its own function now
         if index == 1 and self.brn_flag and not crit:
             stat = stat//2
 
         if index == 3 and self.prz_flag:
             stat = stat//4
+        """
 
         return stat
 
     def recalc_stats(self):
+        """
         self.attack = self.calc_stat(1)
         self.defense = self.calc_stat(2)
         self.speed = self.calc_stat(3)
         self.special = self.calc_stat(4)
+        """
+        for i in range(4):
+            self.stats[i] = self.calc_stat(i+1)
+
+    def apply_status_debuff(self):
+        """
+        Apply the Attack (Speed) stat debuff caused by BRN (PRZ)
+        """
+        if self.sm.status not in ['BRN', 'PRZ']:
+            return
+        elif self.sm.status == 'BRN':
+            new = self.attack // 2
+            self.attack = new if new > 0 else 1
+            return
+        else:
+            new = self.speed // 4
+            self.speed = new if new > 0 else 1
+            return
 
     def reset_stat_stages(self):
         self.stat_stages = [0] * globals.NUM_BATTLE_STATS
@@ -114,6 +164,14 @@ class Pokemon:
 
     def add_seen_move(self, move):
         self.seen_moves.add(move)
+
+    def retreat(self):
+        """
+        Resets stat stages and status flags when Pokemon swaps out.
+        """
+        self.reset_stat_stages()
+        self.sm.retreat()
+        self.recalc_stats()
 
     def print_status(self):
         if globals.UI == 'text':

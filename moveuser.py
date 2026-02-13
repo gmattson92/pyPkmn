@@ -180,12 +180,14 @@ class MoveUser:
         message = f'{target.name} '
         if move.status == 'PRZ':
             message += 'became paralyzed!'
-            target.prz_flag = True
-            target.recalc_stats()
+            # target.prz_flag = True
+            # target.recalc_stats()
+            target.apply_status_debuff()
         elif move.status == 'BRN':
             message += 'was burned!'
-            target.brn_flag = True
-            target.recalc_stats()
+            # target.brn_flag = True
+            # target.recalc_stats()
+            target.apply_status_debuff()
         elif move.status == 'FRZ':
             message += 'was frozen solid!'
         elif move.status == 'SLP':
@@ -257,10 +259,10 @@ class MoveUser:
                     message += 'poisoned!'
             else:
                 # Rest special case
-                target.sm.status = 'SLP'
-                target.current_hp = target.max_hp
-                message = f'{target.name} fell asleep and became healthy!'
-                target.sm.turn_on_counter('sleep', 2)
+                if target.current_hp < target.max_hp:
+                    message = self.proc_status(move, target)
+                else:
+                    message = 'The move failed!'
             post_message(message)
             return
 
@@ -280,13 +282,45 @@ class MoveUser:
                   or (current_stage == 5 and move.stat_delta > 1)):
                 message += 'could not be raised any more!'
             else:
+                # Stage is ok. Check whether updated stat would leave the
+                # allowed [1, 999] range. Note, this does not apply to
+                # Accuracy and Evasion
                 target.stat_stages[move.stat_index] += move.stat_delta
-                target.recalc_stats()
-                sharply = 'sharply ' if abs(move.stat_delta) >= 2 else ''
-                message += sharply
-                message += ('increased!' if move.stat_delta > 0
-                            else 'decreased!')
+                if move.stat_index in range(1, 5):
+                    # Attack, Defense, Speed or Special change
+                    new_val = target.calc_stat(move.stat_index)
+                    if new_val < 1:
+                        message += 'could not be lowered any more!'
+                        # Undo the stage change
+                        target.stat_stages[move.stat_index] = current_stage
+                    elif new_val > 999:
+                        message += 'could not be raised any more!'
+                        # Undo the stage change
+                        target.stat_stages[move.stat_index] = current_stage
+                    else:
+                        # Change is successful
+                        """
+                        # Don't recalculate all stats -- only the relevant one
+                        target.recalc_stats()
+                        """
+                        target.stats[move.stat_index - 1] = new_val
+                        sharply = ('sharply ' if abs(move.stat_delta) >= 2
+                                   else '')
+                        message += sharply
+                        message += ('increased!' if move.stat_delta > 0
+                                    else 'decreased!')
+                        # Reapply prz/brn debuff to other, if applicable
+                        other.apply_status_debuff()
+                else:
+                    # Accuracy or Evasion change
+                    sharply = 'sharply ' if abs(move.stat_delta) >= 2 else ''
+                    message += sharply
+                    message += ('increased!' if move.stat_delta > 0
+                                else 'decreased!')
+                    # Reapply prz/brn debuff to other, if applicable
+                    other.apply_status_debuff()
             post_message(message)
+
         else:
             if move.category == 'Stat':
                 post_message('The move missed!')
