@@ -106,14 +106,7 @@ class MoveUser:
         else:
             raise ValueError(f'Unexpected category {category}')
 
-    def calc_damage(self, move, user, target):
-        # return 10   # for testing
-
-        # First check for a critical hit, because this affects stat values
-        crit = random.randrange(256) < self.crit_rng_threshold(user, move)
-        crit_mult = 2 if crit else 1
-        if crit:
-            post_message('Critical hit!')
+    def get_effective_att_def(self, move, user, target, crit):
         # Determine effective att/def stats
         if move.category == 'Physical':
             if crit:
@@ -122,6 +115,10 @@ class MoveUser:
             else:
                 a = user.attack
                 d = target.defense
+                if target.sm.get_flag('reflect'):
+                    d *= 2
+                    if d > 1024:
+                        d = d % 1024
         else:
             if crit:
                 a = user.calc_stat(4, True)
@@ -129,10 +126,24 @@ class MoveUser:
             else:
                 a = user.special
                 d = target.special
+                if target.sm.get_flag('lightscreen'):
+                    d *= 2
+                    if d > 1024:
+                        d = d % 1024
         if a > 255 or d > 255:
             a = a//4
             d = d//4
+        return (a, d)
 
+    def calc_damage(self, move, user, target):
+        # return 10   # for testing
+
+        # First check for a critical hit, because this affects stat values
+        crit = random.randrange(256) < self.crit_rng_threshold(user, move)
+        crit_mult = 2 if crit else 1
+        if crit:
+            post_message('Critical hit!')
+        a, d = self.get_effective_att_def(move, user, target, crit)
         raw_power = move.base_power
         if raw_power == '-':
             return self.get_fixed_damage(move, user, target)
@@ -172,8 +183,29 @@ class MoveUser:
         return thresh
 
     def get_fixed_damage(self, move, user, target):
-        # Need to implement
-        return min(10, target.current_hp)   # for testing
+        # return min(10, target.current_hp)   # for testing
+        fd_type = move.fixed_damage
+        if not fd_type:
+            raise ValueError(f'get_fixed_damage called for move {move.name} '
+                             f'with no fixed_damage attribute')
+        dmg = 0
+        if fd_type == 'level':
+            # Night Shade and Seismic Toss
+            dmg = user.level
+        elif fd_type == 'random':
+            # Psywave
+            dmg = random.randrange(1, int(1.5*user.level + 1))
+        elif fd_type == 'half_current':
+            # Super Fang
+            dmg = target.current_hp // 2
+        elif fd_type == 'last_damage':
+            # Counter
+            # Need to implement (remember Ghost is immune)
+            pass
+        else:
+            # Dragon Rage and SonicBoom
+            dmg = fd_type
+        return min(dmg, target.current_hp)
 
     def proc_status(self, move, target):
         target.sm.status = move.status
@@ -220,7 +252,13 @@ class MoveUser:
         if (move.type == 'Electric' and
                 'Ground' in [target.type1, target.type2]):
             return
-        # don't apply a new status if the target already has one, except Rest
+        # Poison Pokemon can't be poisoned (or toxic'd)
+        if (move.status in ['PSN', 'TXC'] and
+                'Poison' in [target.type1, target.type2]):
+            if move.category == 'Status':
+                post_message('The move has no effect!')
+            return
+        # Don't apply a new status if the target already has one, except Rest
         # and unfreezing when hit by a fire move capable of causing BRN
         if target.sm.status:
             self.attempt_status_overwrite(move, target)

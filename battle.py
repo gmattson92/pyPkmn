@@ -11,10 +11,18 @@ class Battle:
     """
     """
 
-    def __init__(self, ui='text', trainer1_ai='human', trainer2_ai='random'):
+    def __init__(self, ui='text',
+                 trainer1_ai='human', trainer2_ai='random',
+                 trainer1_party='random', trainer2_party='random'):
         globals.UI = ui
-        self.trainer1 = Trainer('Player')
-        self.trainer2 = Trainer('CPU')
+        if trainer1_party == 'random':
+            self.trainer1 = Trainer('Player')
+        else:
+            self.trainer1 = Trainer('Player', 0, trainer1_party)
+        if trainer2_party == 'random':
+            self.trainer2 = Trainer('CPU')
+        else:
+            self.trainer2 = Trainer('CPU', 0, trainer2_party)
         self.trainer1.print()
         # self.trainer2.print()
         self.ai1 = AI(trainer1_ai, trainer=self.trainer1, other=self.trainer2)
@@ -28,8 +36,9 @@ class Battle:
 
     def round(self):
         post_message('\nCurrent battle status:', wait=False)
-        self.trainer1.print_active()
-        self.trainer2.print_active(seen_moves=True)
+        stats = True if globals.DEBUG else False
+        self.trainer1.print_active(stats=stats)
+        self.trainer2.print_active(stats=stats, seen_moves=True)
         post_message()
         action1 = self.ai1.get_action()
         action2 = self.ai2.get_action()
@@ -48,7 +57,8 @@ class Battle:
         pkmn_included_in_end_round = [trainer.active]
         """
         apply_end_round = True
-        return_pkmn = False
+        # return_pkmn = False
+        return_pkmn = True
         if trainer == self.trainer1:
             other_trainer = self.trainer2
         else:
@@ -72,6 +82,7 @@ class Battle:
                 if caused_faint:
                     apply_end_round = False
                 else:
+                    return_pkmn = False
                     self.tm.after_move(trainer.active, other_trainer.active)
                     # If recurring damage caused a faint, skip end_round
                     caused_faint = self.check_for_faints(trainer.active,
@@ -165,7 +176,7 @@ class Battle:
 
     def validate_action(self, action, trainer):
         if action[0] == 'swap':
-            if action[1] < 0 or action[1] >= len(trainer.party_alive):
+            if action[1] < 0 or action[1] >= len(trainer.party):
                 raise IndexError(f'Invalid party index {action[1]}')
         elif action[0] == 'move':
             if action[1] != 4:

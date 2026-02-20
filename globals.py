@@ -4,6 +4,7 @@ import json
 
 
 UI = 'text'
+DEBUG = False
 MAX_DV = 15
 MAX_STAT_EXP = 65535
 NUM_PERM_STATS = 5

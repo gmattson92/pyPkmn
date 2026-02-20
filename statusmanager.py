@@ -216,11 +216,12 @@ class StatusManager:
         if self.status != 'BRN':
             self.pkmn.brn_flag = False
         """
-        # Reset all other flags and counters
+        # Reset all other flags and counters, except the sleep counter
         for flag in self.active_flags:
             flag.reset()
         for counter in self.active_counters:
-            counter.reset()
+            if counter.name != "sleep":
+                counter.reset()
 
     def update_can_select_move(self):
         # Update based on active flags

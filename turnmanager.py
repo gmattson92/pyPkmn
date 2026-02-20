@@ -260,20 +260,27 @@ class TurnManager:
         # Always do at least 1 HP of damage
         if damage == 0:
             damage = 1
+        damage = min(damage, target.current_hp)
         target.current_hp -= damage
         if seed:
-            post_message(f'{target.name}\'s health was drained!')
+            message = f'{target.name}\'s health was drained!'
+            # message = (f'{target.name}\'s health was drained! (-{damage} HP,'
+            #            f' N={toxic_N})')
         else:
             message = f'{target.name} was affected by its '
             if target.sm.status == 'BRN':
                 message += 'burn!'
+                # message += f'burn! (-{damage}, N={toxic_N})'
             elif target.sm.status in ['PSN', 'TXC']:
                 message += 'poison!'
+                # message += f'poison! (-{damage}, N={toxic_N})'
             else:
                 raise ValueError('Called apply_one_recurring_damage() on '
                                  f'healthy Pokemon: name={target.name}, '
                                  f'status={target.sm.status}')
-            post_message(message)
+        if globals.DEBUG:
+            message += f'\n(-{damage} HP, N = {toxic_N})'
+        post_message(message)
         if toxic_active:
             target.sm.increment_toxic()
         return damage

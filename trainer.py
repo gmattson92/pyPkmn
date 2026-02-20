@@ -8,14 +8,27 @@ class Trainer:
     """
     """
 
-    def __init__(self, name, party_size=2):
+    def __init__(self, name, party_size=2, party='random'):
         self.name = name
-        try:
-            self.party = [Pokemon(species) for species in
-                          random.sample(globals.species_list, party_size)]
-        except ValueError:
-            self.party = [Pokemon('Tauros')] * party_size
+        self.party = self.init_party(party, party_size)
         self._active = self.party[0]
+
+    def init_party(self, party, party_size):
+        ret = []
+        if party == 'random':
+            try:
+                ret = [Pokemon(species) for species in
+                       random.sample(globals.species_list, party_size)]
+            except ValueError:
+                ret = [Pokemon('Tauros')] * party_size
+        elif type(party) == dict:
+            # Assume keys are species, and values are tuples of level, moveset
+            for species, tup in party.items():
+                ret.append(Pokemon(species, tup[1], tup[0]))
+        else:
+            raise ValueError(f'Invalid starting party {party}; should be dict '
+                             'or "random"')
+        return ret
 
     @property
     def party_alive(self):
@@ -62,9 +75,9 @@ class Trainer:
         else:
             pass
 
-    def print_active(self, seen_moves=False):
+    def print_active(self, stats=False, seen_moves=False):
         if globals.UI == 'text':
             post_message(f'Trainer {self.name}\'s active Pokemon:', wait=False)
-            self.active.print(seen_moves=seen_moves)
+            self.active.print(show_stats=stats, seen_moves=seen_moves)
         else:
             pass

@@ -13,7 +13,7 @@ class Pokemon:
     stats, movepool, and level
     """
 
-    def __init__(self, name, level=None):
+    def __init__(self, name, moves='random', level=None):
         d = globals.get_species_dict(name)
         for key, value in d.items():
             setattr(self, key, value)
@@ -39,9 +39,12 @@ class Pokemon:
         self.speed = self.calc_stat(3)
         self.special = self.calc_stat(4)
         """
-        self.recalc_stats()
+        # Non-volatile status needed before calculating stats (BRN/PRZ debuff)
         self.sm = StatusManager(self)
-        self.moves = self.randomize_moves()
+        self.recalc_stats()
+        # Replace randomize_moves with more general init_moves
+        # self.moves = self.randomize_moves()
+        self.moves = self.init_moves(moves)
         self.seen_moves = set()
 
     def is_fainted(self):
@@ -107,7 +110,7 @@ class Pokemon:
         # Apply stage modifier, except for critical hits
         stage_multiplier = globals.get_stat_multiplier(self.stat_stages[index])
         if not crit:
-            stat *= stage_multiplier
+            stat = int(stat * stage_multiplier)
 
         """
         # Removed -- status debuff has its own function now
@@ -129,6 +132,7 @@ class Pokemon:
         """
         for i in range(4):
             self.stats[i] = self.calc_stat(i+1)
+        self.apply_status_debuff()
 
     def apply_status_debuff(self):
         """
@@ -147,6 +151,19 @@ class Pokemon:
 
     def reset_stat_stages(self):
         self.stat_stages = [0] * globals.NUM_BATTLE_STATS
+
+    def init_moves(self, moves):
+        if moves == 'random':
+            return self.randomize_moves()
+        elif type(moves) == list:
+            if len(moves) <= 4:
+                return [Move(move) for move in moves]
+            else:
+                raise ValueError(f'Invalid starting move list {moves} '
+                                 'is too long')
+        else:
+            raise ValueError(f'Invalid starting moves {moves}; should be list '
+                             'or "random"')
 
     def randomize_moves(self):
         moves = []
@@ -194,11 +211,12 @@ class Pokemon:
 
     def print_stats(self):
         if globals.UI == 'text':
-            post_message(f'Att: {self.attack}, Def: {self.defense}, '
-                         f'Spe: {self.speed}, Spc: {self.special}',
-                         end='\n', wait=False)
-        else:
-            pass
+            names = ['Att', 'Def', 'Spe', 'Spc']
+            message = ''
+            for i in range(4):
+                message += (f'{names[i]}: {self.stats[i]} '
+                            f'({self.stat_stages[i+1]:+d})\n')
+            post_message(message, end='', wait=False)
 
     def print(self, show_stats=False, newline=True,
               indent_moves=True, seen_moves=False):
