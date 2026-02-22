@@ -16,15 +16,26 @@ d_statchanges = {
 d_statuses = {
     'Bulbasaur': (5, ['PoisonPowder', 'Thunder Wave', 'Spore', 'Toxic']),
     'Caterpie': (5, ['Ember', 'Ice Beam', 'Ice Beam', 'Toxic']),
-    'Chansey': (100, ['Rest', 'Roar']),
-    'Koffing': (100, ['Roar'])
+    'Chansey': (100, ['Rest', 'Roar', 'Roar', 'Roar']),
+    'Koffing': (100, ['Roar', 'Roar', 'Roar', 'Roar'])
+}
+
+
+# Burn/Paralysis stat debuffs
+d_debuffs = {
+    'Voltorb': (5, ['Thunder Wave', 'Roar', 'Roar', 'Roar']),
+    'Pikachu': (5, ['Agility', 'Double Team', 'Leer', 'BubbleBeam']),
+    'Chansey': (100, ['Rest', 'Agility', 'Meditate', 'Roar']),
+    'Growlithe': (5, ['Ember', 'Ember', 'Ember', 'Roar']),
+    'Vulpix': (5, ['Agility', 'Double Team', 'Leer', 'Growl']),
+    'Chansey': (100, ['Rest', 'Agility', 'Meditate', 'Roar'])
 }
 
 
 d_teams = {
-    'statchanges': d_statchanges,
-    'statuses': d_statuses  # ,
-    # 'statusdebuffs': d_debuffs,
+    'stat changes': d_statchanges,
+    'statuses': d_statuses,
+    'status debuffs': d_debuffs  # ,
     # 'vstatuses': d_vstatuses,
 }
 
