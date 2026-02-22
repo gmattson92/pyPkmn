@@ -49,6 +49,15 @@ class MoveUser:
         else:
             pass
 
+        user.last_used_move_index = self.get_move_index(move, user)
+
+    def get_move_index(self, move, user):
+        i = 0
+        for i, m in enumerate(user.moves):
+            if m == move:
+                break
+        return i
+
     def apply_direct_damage(self, move, user, other):
         # accuracy check
         acc = self.get_effective_accuracy('Damage', move, user, other)

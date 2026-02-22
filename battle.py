@@ -24,6 +24,7 @@ class Battle:
         else:
             self.trainer2 = Trainer('CPU', 0, trainer2_party)
         self.trainer1.print()
+        post_message()
         # self.trainer2.print()
         self.ai1 = AI(trainer1_ai, trainer=self.trainer1, other=self.trainer2)
         self.ai2 = AI(trainer2_ai, trainer=self.trainer2, other=self.trainer1)
@@ -35,11 +36,11 @@ class Battle:
         return (self.trainer1.all_fainted() or self.trainer2.all_fainted())
 
     def round(self):
-        post_message('\nCurrent battle status:', wait=False)
+        post_message('Current battle status:', wait=True)
         stats = True if globals.DEBUG else False
         self.trainer1.print_active(stats=stats)
         self.trainer2.print_active(stats=stats, seen_moves=True)
-        post_message()
+        post_message('', end='')
         action1 = self.ai1.get_action()
         action2 = self.ai2.get_action()
         self.validate_action(action1, self.trainer1)
@@ -48,6 +49,7 @@ class Battle:
         apply_end_round, l_pkmn = self.apply_actions(first, action1, action2)
         if apply_end_round:
             self.end_round(l_pkmn)
+        post_message(wait=False)
 
     def turn(self, trainer, action, first=False):
         """

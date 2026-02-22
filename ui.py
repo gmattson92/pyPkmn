@@ -30,13 +30,13 @@ def get_valid_text_action(trainer):
     while True:
         try:
             post_message('What will you do?', wait=False)
-            x = int(input('1. Use move\n2. Swap\n3. View party\n'))
+            x = int(input('1. Fight\n2. Swap\n3. View party\n'))
             if x not in [1, 2, 3]:
                 post_message(bad_input_message, wait=False)
                 continue
             elif x == 2 and len(trainer.party_alive) == 1:
                 post_message('You have no other Pokemon to send out! '
-                             'Use a move instead!', wait=False)
+                             'Fight instead!', wait=False)
                 continue
             else:
                 # valid choice
@@ -45,14 +45,20 @@ def get_valid_text_action(trainer):
                     if total_pp == 0:
                         action = ('move', 4)
                         break
-                    post_message('Choose a move (enter 0 for previous menu):',
-                                 wait=False)
-                    # self.trainer.active.print()
-                    i = get_valid_move(trainer)
-                    if i == 0:
-                        continue
+                    if trainer.active.sm.can_select_move:
+                        post_message('Choose a move '
+                                     '(enter 0 for previous menu):',
+                                     wait=False)
+                        # self.trainer.active.print()
+                        i = get_valid_move(trainer)
+                        if i == 0:
+                            continue
+                        else:
+                            action = ('move', i-1)
+                            break
                     else:
-                        action = ('move', i-1)
+                        move = trainer.active.last_used_move
+                        action = ('move', move)
                         break
                 elif x == 2:
                     # post_message('Choose a Pokemon'
@@ -67,6 +73,7 @@ def get_valid_text_action(trainer):
                         break
                 else:
                     trainer.print(stats=True)
+                    post_message()
                     continue
         except ValueError:
             post_message(bad_input_message, wait=False)

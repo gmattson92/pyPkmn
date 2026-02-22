@@ -68,10 +68,11 @@ class Trainer:
                          'Details:', wait=False)
             for i, pkmn in enumerate(self.party):
                 post_message(f'{i+1}.', end=' ', wait=False)
-                nl = False if pkmn == self.party[-1] else True
-                pkmn.print(show_stats=stats, newline=nl,
+                # nl = False if pkmn == self.party[-1] else True
+                # pkmn.print(show_stats=stats, newline=nl,
+                pkmn.print(show_stats=stats, newline=True,
                            indent_moves=True, seen_moves=seen_moves)
-            post_message(end='')
+            # post_message(end='')
         else:
             pass
 

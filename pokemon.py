@@ -46,6 +46,7 @@ class Pokemon:
         # self.moves = self.randomize_moves()
         self.moves = self.init_moves(moves)
         self.seen_moves = set()
+        self._last_used_move_index = -1
 
     def is_fainted(self):
         if self.current_hp <= 0:
@@ -182,6 +183,14 @@ class Pokemon:
     def add_seen_move(self, move):
         self.seen_moves.add(move)
 
+    @property
+    def last_used_move_index(self):
+        return self._last_used_move_index
+
+    @last_used_move_index.setter
+    def last_used_move_index(self, val):
+        self._last_used_move_index = val
+
     def retreat(self):
         """
         Resets stat stages and status flags when Pokemon swaps out.
@@ -202,10 +211,14 @@ class Pokemon:
     def print_moves(self, indent=True, seen_moves=False):
         if globals.UI == 'text':
             moves = self.seen_moves if seen_moves else self.moves
-            for i, move in enumerate(moves):
-                message = '--> ' if indent else ''
-                message += f'{i+1}. {move.name} ({move.pp}/{move.max_pp})'
-                post_message(message, end=' ', wait=False)
+            if not moves:
+                return False
+            else:
+                for i, move in enumerate(moves):
+                    message = '--> ' if indent else ''
+                    message += f'{i+1}. {move.name} ({move.pp}/{move.max_pp})'
+                    post_message(message, end=' ', wait=False)
+                return True
         else:
             pass
 
@@ -223,6 +236,7 @@ class Pokemon:
         self.print_status()
         if show_stats:
             self.print_stats()
-        self.print_moves(indent=indent_moves, seen_moves=seen_moves)
-        if globals.UI == 'text' and newline:
+        printed_moves = self.print_moves(indent=indent_moves,
+                                         seen_moves=seen_moves)
+        if globals.UI == 'text' and newline and printed_moves:
             post_message(wait=False)
