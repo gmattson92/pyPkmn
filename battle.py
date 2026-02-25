@@ -1,7 +1,7 @@
 import globals
 from move import Move
 from trainer import Trainer
-from ai import AI
+from ai import get_AI
 from moveuser import MoveUser
 from turnmanager import TurnManager
 from ui import post_message
@@ -26,8 +26,10 @@ class Battle:
         self.trainer1.print()
         post_message()
         # self.trainer2.print()
-        self.ai1 = AI(trainer1_ai, trainer=self.trainer1, other=self.trainer2)
-        self.ai2 = AI(trainer2_ai, trainer=self.trainer2, other=self.trainer1)
+        self.ai1 = get_AI(trainer1_ai,
+                          trainer=self.trainer1, other=self.trainer2)
+        self.ai2 = get_AI(trainer2_ai,
+                          trainer=self.trainer2, other=self.trainer1)
         self.mu = MoveUser()
         self.tm = TurnManager(self.mu)
 
