@@ -208,10 +208,14 @@ class TurnManager:
                              and can_move_flinch
                              and can_move_recharge)
         if decrement_cnf_dsb:
-            if user.sm.get_counter('confusion'):
-                user.sm.decrement_counter('confusion')
+            # Decrement Disable first, because the confusion check happens
+            # right after this
             if user.sm.get_counter('disable'):
-                user.sm.decrement_counter('disable')
+                msg = user.sm.decrement_counter('disable')
+                post_message(msg)
+            if user.sm.get_counter('confusion'):
+                msg = user.sm.decrement_counter('confusion')
+                post_message(msg)
 
         # Check for pkmn hitting itself in confusion (but skip this if pkmn
         # can't move for another reason)
@@ -231,7 +235,8 @@ class TurnManager:
                 user.sm.reset_counter('multiturn')
             decrement_mlt = (not asleep_frozen) and (not trap_active)
             if decrement_mlt:
-                user.sm.decrement_counter('multiturn')
+                msg = user.sm.decrement_counter('multiturn')
+                post_message(msg)
 
         return ret
 

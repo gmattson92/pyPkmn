@@ -6,6 +6,14 @@ class Flag:
         self.name = name
         self._val = initial_val
         self.turn_on_string = ''
+        atts = ['turn_on_string', 'still_on_string',
+                'expire_string', 'reset_string', 'can_select_move']
+        for att in atts:
+            val = '' if att != 'can_select_move' else True
+            if att in kwargs:
+                val = kwargs[att]
+            setattr(self, att, val)
+        '''
         if 'turn_on_string' in kwargs:
             self.turn_on_string = kwargs['turn_on_string']
         if 'still_on_string' in kwargs:
@@ -19,6 +27,7 @@ class Flag:
         self.can_select_move = True
         if 'can_select_move' in kwargs:
             self.can_select_move = kwargs['can_select_move']
+        '''
 
     def __bool__(self):
         return self._val
@@ -113,130 +122,38 @@ class StatusManager:
     def __init__(self, pkmn):
         self.pkmn = pkmn
         self._can_select_move = True
-        self.flags = {}
+        self.flags = self._init_flags()
+        self.counters = self._init_counters()
         self.active_flags = []
-        self.counters = {}
         self.active_counters = []
         # Non-volatile (major) status condition
-        self.status = None
-        d_sleep = {'name': 'sleep',
-                   'initial_flag_val': False,
-                   'initial_counter_val': 0,
-                   'turn_on_string': f'{self.pkmn.name} fell asleep!',
-                   'still_on_string': f'{self.pkmn.name} is fast asleep!',
-                   'expire_string': f'{self.pkmn.name} woke up!'}
-        self.counters[d_sleep['name']] = Counter(**d_sleep)
-        # Now all the specific flags for status and move interactions:
-        # status interactions
-        d_confusion = {'name': 'confusion',
-                       'initial_flag_val': False,
-                       'initial_counter_val': 0,
-                       'turn_on_string': f'{self.pkmn.name} became confused!',
-                       'still_on_string': f'{self.pkmn.name} is confused!',
-                       'expire_string':
-                           f'{self.pkmn.name} snapped out of confusion!'}
-        self.counters[d_confusion['name']] = Counter(**d_confusion)
-        d_flinch = {'name': 'flinch',
-                    'initial_flag_val': False,
-                    'turn_on_string': f'{self.pkmn.name} flinched!'}
-        self.flags[d_flinch['name']] = Flag(**d_flinch)
-        d_disable = {'name': 'disable',
-                     'initial_flag_val': False,
-                     'initial_counter_val': 0,
-                     'turn_on_string': f'{self.pkmn.name} became Disabled!',
-                     'still_on_string': f'{self.pkmn.name} is Disabled!',
-                     'expire_string': f'{self.pkmn.name} is Disabled no more!'}
-        self.counters[d_disable['name']] = Counter(**d_disable)
-        d_seed = {'name': 'seed',
-                  'initial_flag_val': False,
-                  'turn_on_string': f'{self.pkmn.name} was seeded!'}
-        self.flags[d_seed['name']] = Flag(**d_seed)
-        d_toxic = {'name': 'toxic',
-                   'initial_flag_val': False,
-                   'initial_counter_val': 1,
-                   'turn_on_string': f'{self.pkmn.name} was badly Posioned!'}
-        self.counters[d_toxic['name']] = ToxicCounter(**d_toxic)
-        # stat interactions
-        d_lightscreen = {'name': 'lightscreen',
-                         'initial_flag_val': False,
-                         'turn_on_string':
-                         f'{self.pkmn.name} put up a Lightscreen!'}
-        self.flags[d_lightscreen['name']] = Flag(**d_lightscreen)
-        d_reflect = {'name': 'reflect',
-                     'initial_flag_val': False,
-                     'turn_on_string': f'{self.pkmn.name} put up a Reflect!'}
-        self.flags[d_reflect['name']] = Flag(**d_reflect)
-        # move selection disabled
-        d_recharge = {'name': 'recharge',
-                      'initial_flag_val': False,
-                      'expire_string': f'{self.pkmn.name} has to recharge!',
-                      'can_select_move': False}
-        self.flags[d_recharge['name']] = Flag(**d_reflect)
-        d_multiturn = {'name': 'multiturn',
-                       'initial_flag_val': False,
-                       'initial_counter_val': 0,
-                       'still_on_string':
-                       f'{self.pkmn.name} is thrashing about!',
-                       'can_select_move': False}
-        self.counters[d_multiturn['name']] = Counter(**d_multiturn)
-        d_multiturn = {'name': 'multiturn',
-                       'initial_flag_val': False,
-                       'initial_counter_val': 0,
-                       'still_on_string':
-                       f'{self.pkmn.name} is thrashing about!',
-                       'can_select_move': False}
-        self.counters[d_multiturn['name']] = Counter(**d_multiturn)
-        d_trapping = {'name': 'trapping',
-                      'initial_flag_val': False,
-                      'initial_counter_val': 0,
-                      'can_select_move': False}
-        self.counters[d_trapping['name']] = Counter(**d_trapping)
-        d_trapped = {'name': 'trapped',
-                     'initial_flag_val': False,
-                     'initial_counter_val': 0,
-                     'can_select_move': False}
-        self.counters[d_trapped['name']] = Counter(**d_trapped)
-        self.two_turn = False
-        d_two_turn = {'name': 'two_turn',
-                      'initial_flag_val': False,
-                      'can_select_move': False}
-        self.flags[d_two_turn['name']] = Flag(**d_two_turn)
+        self._status = None
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, val):
+        self._status = val
 
     def retreat(self):
         """
         Resets status flags and counters when the Pokemon swaps out.
         """
         # Convert Toxic to regular Poison:
-        if self.status == 'TXC':
-            self.status = 'PSN'
-        """
-        # Reset Pokemon's prz and brn flags if no longer statused (via Rest)
-        if self.status != 'PRZ':
-            self.pkmn.prz_flag = False
-        if self.status != 'BRN':
-            self.pkmn.brn_flag = False
-        """
+        if self._status == 'TXC':
+            self._status = 'PSN'
         # Reset all other flags and counters, except the sleep counter
         for flag in self.active_flags:
             flag.reset()
         for counter in self.active_counters:
-            if counter.name != "sleep":
+            if counter.name != 'sleep':
                 counter.reset()
-
-    def update_can_select_move(self):
-        # Update based on active flags
-        new_val = True
-        for flag in self.active_flags:
-            if not flag.can_select_move:
-                new_val = False
-        for counter in self.active_counters:
-            if not counter.can_select_move:
-                new_val = False
-        self._can_select_move = new_val
 
     @property
     def can_select_move(self):
-        self.update_can_select_move()
+        self._update_can_select_move()
         return self._can_select_move
 
     '''
@@ -291,9 +208,130 @@ class StatusManager:
             self.active_counters.remove(counter)
             # For waking up from sleep, update pokemon's non-volatile status
             if name == 'sleep':
-                self.status = None
+                self._status = None
         return message
 
     def increment_toxic(self):
         counter = self.get_counter('toxic')
         return counter.increment()
+
+    def _init_flags(self):
+        flags = {}
+        # Volatile (minor) status
+        flags['flinch'] = Flag(**(self._d_flinch()))
+        flags['seed'] = Flag(**(self._d_seed()))
+        # Stat-changing interactions
+        flags['lightscreen'] = Flag(**(self._d_lightscreen()))
+        flags['reflect'] = Flag(**(self._d_reflect()))
+        # Move selection disabled
+        flags['recharge'] = Flag(**(self._d_recharge()))
+        flags['two_turn'] = Flag(**(self._d_two_turn()))
+        return flags
+
+    def _init_counters(self):
+        counters = {}
+        # Non-volatile (major) status
+        counters['sleep'] = Counter(**(self._d_sleep()))
+        counters['toxic'] = ToxicCounter(**(self._d_toxic()))
+        # Volatile (minor) status
+        counters['confusion'] = Counter(**(self._d_confusion()))
+        counters['disable'] = Counter(**(self._d_disable()))
+        # Other move interactions
+        counters['multiturn'] = Counter(**(self._d_multiturn()))
+        counters['trapping'] = Counter(**(self._d_trapping()))
+        counters['trapped'] = Counter(**(self._d_trapped()))
+        return counters
+
+    def _d_flinch(self):
+        return {'name': 'flinch',
+                'initial_flag_val': False,
+                'turn_on_string': f'{self.pkmn.name} flinched!'}
+
+    def _d_seed(self):
+        return {'name': 'seed',
+                'initial_flag_val': False,
+                'turn_on_string': f'{self.pkmn.name} was seeded!'}
+
+    def _d_lightscreen(self):
+        return {'name': 'lightscreen',
+                'initial_flag_val': False,
+                'turn_on_string':
+                f'{self.pkmn.name} put up a Lightscreen!'}
+
+    def _d_reflect(self):
+        return {'name': 'reflect',
+                'initial_flag_val': False,
+                'turn_on_string': f'{self.pkmn.name} put up a Reflect!'}
+
+    def _d_recharge(self):
+        return {'name': 'recharge',
+                'initial_flag_val': False,
+                'expire_string': f'{self.pkmn.name} has to recharge!',
+                'can_select_move': False}
+
+    def _d_two_turn(self):
+        return {'name': 'two_turn',
+                'initial_flag_val': False,
+                'can_select_move': False}
+
+    def _d_sleep(self):
+        return {'name': 'sleep',
+                'initial_flag_val': False,
+                'initial_counter_val': 0,
+                'turn_on_string': f'{self.pkmn.name} fell asleep!',
+                'still_on_string': f'{self.pkmn.name} is fast asleep!',
+                'expire_string': f'{self.pkmn.name} woke up!'}
+
+    def _d_confusion(self):
+        return {'name': 'confusion',
+                'initial_flag_val': False,
+                'initial_counter_val': 0,
+                'turn_on_string': f'{self.pkmn.name} became confused!',
+                'still_on_string': f'{self.pkmn.name} is confused!',
+                'expire_string': f'{self.pkmn.name} snapped out of confusion!'}
+
+    def _d_disable(self):
+        return {'name': 'disable',
+                'initial_flag_val': False,
+                'initial_counter_val': 0,
+                'turn_on_string': f'{self.pkmn.name} became Disabled!',
+                'still_on_string': f'{self.pkmn.name} is Disabled!',
+                'expire_string': f'{self.pkmn.name} is Disabled no more!'}
+
+    def _d_toxic(self):
+        return {'name': 'toxic',
+                'initial_flag_val': False,
+                'initial_counter_val': 1,
+                'turn_on_string': f'{self.pkmn.name} was badly Posioned!'}
+
+    def _d_multiturn(self):
+        return {'name': 'multiturn',
+                'initial_flag_val': False,
+                'initial_counter_val': 0,
+                'still_on_string':
+                f'{self.pkmn.name} is thrashing about!',
+                'expire_string': f'{self.pkmn.name} is fatigued!',
+                'can_select_move': False}
+
+    def _d_trapping(self):
+        return {'name': 'trapping',
+                'initial_flag_val': False,
+                'initial_counter_val': 0,
+                'can_select_move': False}
+
+    def _d_trapped(self):
+        return {'name': 'trapped',
+                'initial_flag_val': False,
+                'initial_counter_val': 0,
+                'can_select_move': False}
+
+    def _update_can_select_move(self):
+        # Update based on active flags
+        new_val = True
+        for flag in self.active_flags:
+            if not flag.can_select_move:
+                new_val = False
+        for counter in self.active_counters:
+            if not counter.can_select_move:
+                new_val = False
+        self._can_select_move = new_val
