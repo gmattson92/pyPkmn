@@ -78,8 +78,8 @@ class MoveUser:
             self.apply_stat_changes(move, user, other)
 
     def get_effective_accuracy(self, category, move, user, other):
-        acc_mult = globals.get_stat_multiplier(user.stat_stages[5])
-        eva_mult = globals.get_evasion_multiplier(other.stat_stages[6])
+        acc_mult = user.accuracy
+        eva_mult = other.evasion
         if category == 'Damage':
             base = move.accuracy
             if base == '-':
@@ -119,8 +119,8 @@ class MoveUser:
         # Determine effective att/def stats
         if move.category == 'Physical':
             if crit:
-                a = user.calc_stat(1, True)
-                d = target.calc_stat(2, True)
+                a = user.stats.stats_l[1].calculate_stat(crit=True)
+                d = target.stats.stats_l[2].calculate_stat(crit=True)
             else:
                 a = user.attack
                 d = target.defense
@@ -130,8 +130,8 @@ class MoveUser:
                         d = d % 1024
         else:
             if crit:
-                a = user.calc_stat(4, True)
-                d = target.calc_stat(4, True)
+                a = user.stats.stats_l[4].calculate_stat(crit=True)
+                d = target.stats.stats_l[4].calculate_stat(crit=True)
             else:
                 a = user.special
                 d = target.special
@@ -155,6 +155,7 @@ class MoveUser:
         a, d = self.get_effective_att_def(move, user, target, crit)
         raw_power = move.base_power
         if raw_power == '-':
+            # Note 3/2/26 -- this will fail for OHKO moves
             return self.get_fixed_damage(move, user, target)
         else:
             power = raw_power
@@ -223,12 +224,12 @@ class MoveUser:
             message += 'became paralyzed!'
             # target.prz_flag = True
             # target.recalc_stats()
-            target.apply_status_debuff()
+            target.stats.apply_status_debuff()
         elif move.status == 'BRN':
             message += 'was burned!'
             # target.brn_flag = True
             # target.recalc_stats()
-            target.apply_status_debuff()
+            target.stats.apply_status_debuff()
         elif move.status == 'FRZ':
             message += 'was frozen solid!'
         elif move.status == 'SLP':
@@ -319,53 +320,20 @@ class MoveUser:
         move_hits = globals.rng_check(acc)
         if move_hits:
             target = other if move.stat_target == 'other' else user
-            message = f'{target.name}\'s '
-            message += globals.index_to_stat[move.stat_index] + ' '
-            current_stage = target.stat_stages[move.stat_index]
-            if ((current_stage == -6 and move.stat_delta < 0)
-                    or (current_stage == -5 and move.stat_delta < -1)):
-                message += 'could not be lowered any more!'
-            elif ((current_stage == 6 and move.stat_delta > 0)
-                  or (current_stage == 5 and move.stat_delta > 1)):
-                message += 'could not be raised any more!'
+            if not target.stats.can_change(move.stat_index, move.stat_delta):
+                # Change is not possible
+                message = target.stats.get_bad_change_message(move.stat_index)
             else:
-                # Stage is ok. Check whether updated stat would leave the
-                # allowed [1, 999] range. Note, this does not apply to
-                # Accuracy and Evasion
-                target.stat_stages[move.stat_index] += move.stat_delta
-                if move.stat_index in range(1, 5):
-                    # Attack, Defense, Speed or Special change
-                    new_val = target.calc_stat(move.stat_index)
-                    if new_val < 1:
-                        message += 'could not be lowered any more!'
-                        # Undo the stage change
-                        target.stat_stages[move.stat_index] = current_stage
-                    elif new_val > 999:
-                        message += 'could not be raised any more!'
-                        # Undo the stage change
-                        target.stat_stages[move.stat_index] = current_stage
-                    else:
-                        # Change is successful
-                        """
-                        # Don't recalculate all stats -- only the relevant one
-                        target.recalc_stats()
-                        """
-                        target.stats[move.stat_index - 1] = new_val
-                        sharply = ('sharply ' if abs(move.stat_delta) >= 2
-                                   else '')
-                        message += sharply
-                        message += ('increased!' if move.stat_delta > 0
-                                    else 'decreased!')
-                        # Reapply prz/brn debuff to other, if applicable
-                        other.apply_status_debuff()
-                else:
-                    # Accuracy or Evasion change
-                    sharply = 'sharply ' if abs(move.stat_delta) >= 2 else ''
-                    message += sharply
-                    message += ('increased!' if move.stat_delta > 0
-                                else 'decreased!')
-                    # Reapply prz/brn debuff to other, if applicable
-                    other.apply_status_debuff()
+                # Change is successful
+                """
+                # Don't recalculate all stats -- only the relevant one
+                target.recalc_stats()
+                """
+                target.stats.modify_stat(move.stat_index, move.stat_delta)
+                message = target.stats.get_modified_message(move.stat_index,
+                                                            move.stat_delta)
+                # Reapply prz/brn debuff to other, if applicable
+                other.stats.apply_status_debuff()
             post_message(message)
 
         else:

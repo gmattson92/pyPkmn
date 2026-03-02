@@ -53,8 +53,8 @@ class Trainer:
         else:
             self._active.retreat()
             self._active = self.party[index]
-            self._active.reset_stat_stages()
-            self._active.recalc_stats()
+            self._active.stats.reset_stat_stages()
+            self._active.stats.recalculate_all()
 
     def all_fainted(self):
         return len(self.party_alive) == 0

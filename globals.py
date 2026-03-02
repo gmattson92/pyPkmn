@@ -51,26 +51,6 @@ def multiturn():
     pass
 
 
-# Define stat index mapping
-index_to_stat = {0: 'HP', 1: 'Attack', 2: 'Defense', 3: 'Speed',
-                 4: 'Special', 5: 'Accuracy', 6: 'Evasion'}
-stat_to_index = {'HP': 0, 'Attack': 1, 'Defense': 2, 'Speed': 3,
-                 'Special': 4, 'Accuracy': 5, 'Evasion': 6}
-
-# Define stat stages mapping
-stage_multipliers = {-6: 0.25, -5: 0.28, -4: 0.33, -3: 0.4, -2: 0.5,
-                     -1: 0.66, 0: 1.0, 1: 1.5, 2: 2.0, 3: 2.5,
-                     4: 3.0, 5: 3.5, 6: 4.0}
-
-
-def get_stat_multiplier(stage):
-    return stage_multipliers[stage]
-
-
-def get_evasion_multiplier(stage):
-    return stage_multipliers[-stage]
-
-
 # Define global species data
 # species_df = pd.read_csv('species_list_testing.csv')
 # species_list = list(species_df['name'])
