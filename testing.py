@@ -56,7 +56,7 @@ def main():
                         trainer1_party=team,
                         trainer2_party=team)
     while not bat.is_over:
-        bat.round()
+        bat.advance_round()
     print('Thanks for playing!')
 
 

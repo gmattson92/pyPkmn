@@ -1,58 +1,71 @@
 import globals
-from move import Move
+from mediator import Mediator
+# from move import Move
 from trainer import Trainer
 from ai import get_AI
-from moveuser import MoveUser
-from turnmanager import TurnManager
+# from moveuser import MoveUser
+# from turnmanager import TurnManager
+from roundmanager import RoundManager
 from ui import post_message
 
 
-class Battle:
+class Battle(Mediator):
     """
+    Defines high-level class for managing the battle. Initializes Trainer and
+    AI objects, selects the UI, and acts as the Mediator object through which
+    all other classes send event messages.
     """
 
     def __init__(self, ui='text',
-                 trainer1_ai='human', trainer2_ai='random',
-                 trainer1_party='random', trainer2_party='random'):
+                 trainer1_party='random', trainer2_party='random',
+                 trainer1_ai='human', trainer2_ai='random'):
+        super().__init__()
         globals.UI = ui
-        if trainer1_party == 'random':
-            self.trainer1 = Trainer('Player')
-        else:
-            self.trainer1 = Trainer('Player', 0, trainer1_party)
-        if trainer2_party == 'random':
-            self.trainer2 = Trainer('CPU')
-        else:
-            self.trainer2 = Trainer('CPU', 0, trainer2_party)
+        self.trainer1 = Trainer('Player', trainer1_party)
+        self.trainer2 = Trainer('CPU', trainer2_party)
+        self.add_colleague(self.trainer1)
+        self.add_colleague(self.trainer2)
+        self.add_colleague(self.trainer1._active)
+        self.add_colleague(self.trainer2._active)
         self.trainer1.print()
         post_message()
         # self.trainer2.print()
-        self.ai1 = get_AI(trainer1_ai,
-                          trainer=self.trainer1, other=self.trainer2)
-        self.ai2 = get_AI(trainer2_ai,
-                          trainer=self.trainer2, other=self.trainer1)
-        self.mu = MoveUser()
-        self.tm = TurnManager(self.mu)
+        ai1 = get_AI(trainer1_ai, trainer=self.trainer1, other=self.trainer2)
+        ai2 = get_AI(trainer2_ai, trainer=self.trainer2, other=self.trainer1)
+        self.trainer1.set_ai(ai1)
+        self.trainer2.set_ai(ai2)
+        self.rm = RoundManager(self.trainer1, self.trainer2)
+        self.add_colleague(self.rm)
+        # self.mu = MoveUser()
+        # self.tm = TurnManager(self.mu)
 
     @property
     def is_over(self):
         return (self.trainer1.all_fainted() or self.trainer2.all_fainted())
 
-    def round(self):
-        post_message('Current battle status:', wait=True)
-        stats = True if globals.DEBUG else False
-        self.trainer1.print_active(stats=stats)
-        self.trainer2.print_active(stats=stats, seen_moves=True)
-        post_message('', end='')
-        action1 = self.ai1.get_action()
-        action2 = self.ai2.get_action()
-        self.validate_action(action1, self.trainer1)
-        self.validate_action(action2, self.trainer2)
-        first = self.get_priority(action1, action2)
-        apply_end_round, l_pkmn = self.apply_actions(first, action1, action2)
-        if apply_end_round:
-            self.end_round(l_pkmn)
-        post_message(wait=False)
+    def advance_round(self):
+        """
+        Wrapper method for RoundManager.round(), which advances the battle
+        by one round.
+        """
+        # if globals.UI == 'text':
+        #     post_message('Current battle status:', wait=True)
+        # stats = True if globals.DEBUG else False
+        # self.trainer1.print_active(stats=stats)
+        # self.trainer2.print_active(stats=stats, seen_moves=True)
+        # post_message('', end='')
+        # action1 = self.ai1.get_action()
+        # action2 = self.ai2.get_action()
+        # self.validate_action(action1, self.trainer1)
+        # self.validate_action(action2, self.trainer2)
+        # first = self.get_priority(action1, action2)
+        # apply_end_round, l_pkmn = self.apply_actions(first, action1, action2)
+        # if apply_end_round:
+        #     self.end_round(l_pkmn)
+        # post_message(wait=False)
+        self.rm.round()
 
+    '''
     def turn(self, trainer, action, first=False):
         """
         Applies this trainer's action.
@@ -60,6 +73,7 @@ class Battle:
         if this Pokemon fails to move,
         pkmn_included_in_end_round = [trainer.active]
         """
+
         apply_end_round = True
         # return_pkmn = False
         return_pkmn = True
@@ -158,6 +172,9 @@ class Battle:
         elif (action1[0] == 'move' and action2[0] == 'swap'):
             first = 2
         else:
+            """
+            to-do: need to update this for moves with nonzero priority
+            """
             if (self.trainer1.active.speed > self.trainer2.active.speed):
                 first = 1
             elif (self.trainer1.active.speed < self.trainer2.active.speed):
@@ -172,17 +189,22 @@ class Battle:
         missing its turn.
         """
         for pkmn in l_pkmn:
-            affected = (self.trainer1.active if pkmn == self.trainer1.active
-                        else self.trainer2.active)
+            affected = pkmn
             other = (self.trainer2.active if pkmn == self.trainer1.active
                      else self.trainer1.active)
             self.tm.apply_all_recurring_damage(affected, other)
 
     def validate_action(self, action, trainer):
         if action[0] == 'swap':
+            if type(action[1]) != int:
+                raise ValueError(f'Invalid party index {action[1]}')
             if action[1] < 0 or action[1] >= len(trainer.party):
                 raise IndexError(f'Invalid party index {action[1]}')
+            if trainer.party[action[1]].is_fainted():
+                raise ValueError('Attempting to swap to fainted Pokemon')
         elif action[0] == 'move':
+            if type(action[1]) != int:
+                raise ValueError(f'Invalid move index {action[1]}')
             if action[1] != 4:
                 if action[1] < 0 or action[1] >= len(trainer.active.moves):
                     raise IndexError(f'Invalid move index {action[1]}')
@@ -191,3 +213,4 @@ class Battle:
                         f'Selected move (index={action[1]}) has no PP')
         else:
             raise ValueError(f'Invalid action type {action[0]}')
+    '''

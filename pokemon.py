@@ -1,4 +1,5 @@
 import globals
+from mediator import Colleague
 from statusmanager import StatusManager
 from stats import Stats
 from move import Move
@@ -7,13 +8,14 @@ import sys
 import random
 
 
-class Pokemon:
+class Pokemon(Colleague):
     """
     Define characteristics of a Pokemon, including name, type(s),
     stats, moveset, and level
     """
 
     def __init__(self, name, moves='random', level=None):
+        super().__init__()
         d = globals.get_species_dict(name)
         for key, value in d.items():
             setattr(self, key, value)
@@ -31,8 +33,7 @@ class Pokemon:
         self._printer = PkmnPrinter(self)
 
     def is_fainted(self):
-        if self.current_hp <= 0:
-            self.sm.status = 'FNT'
+        if self.current_hp == 0:
             return True
         else:
             return False
@@ -43,8 +44,11 @@ class Pokemon:
 
     @current_hp.setter
     def current_hp(self, val):
-        if val < 0:
+        if val <= 0:
             self._current_hp = 0
+            self.sm.status = 'FNT'
+            post_message(f'{self.name} fainted!')
+            self.send_event({'event_type': 'faint', 'pkmn': self})
         elif val > self.max_hp:
             self._current_hp = self.max_hp
         else:
@@ -108,6 +112,16 @@ class Pokemon:
         self.stats.reset_stat_stages()
         self.sm.retreat()
         self.stats.recalculate_all()
+
+    def receive_event(self, event_d):
+        if event_d['event_type'] == 'faint':
+            # self.sm.opponent_fainted()
+            pass
+        elif event_d['event_type'] == 'swap':
+            # self.sm.opponent_swapped()
+            pass
+        else:
+            pass
 
     def _init_moves(self, moves):
         if moves == 'random':

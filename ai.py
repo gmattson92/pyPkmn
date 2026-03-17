@@ -23,6 +23,12 @@ class AI:
     def get_swap(self):
         pass
 
+    # def set_trainer(self, trainer):
+    #     self.trainer = trainer
+
+    # def set_other(self, other):
+    #     self.other = other
+
 
 class HumanAI(AI):
     def __init__(self, trainer, other):
