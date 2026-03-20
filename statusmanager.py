@@ -215,6 +215,30 @@ class StatusManager:
         counter = self.get_counter('toxic')
         return counter.increment()
 
+    def opponent_fainted(self):
+        """
+        Reset trapping status if this Pokemon knocked out its opponent.
+        """
+        if self.get_counter('trapping'):
+            self.reset_counter('trapping')
+
+    def opponent_swapped(self):
+        """
+        Reset trapping or trapped status if opponent swaps out.
+        """
+        if self.get_counter('trapping'):
+            self.reset_counter('trapping')
+        if self.get_counter('trapped'):
+            self.reset_counter('trapped')
+
+    def hyper_beam_ko(self):
+        """
+        Reset recharge status if this Pokemon knocked out its opponent or
+        their substitute using Hyper Beam.
+        """
+        if self.get_flag('recharge'):
+            self.reset_flag('recharge')
+
     def _init_flags(self):
         flags = {}
         # Volatile (minor) status

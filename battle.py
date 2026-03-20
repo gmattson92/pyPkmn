@@ -36,6 +36,7 @@ class Battle(Mediator):
         self.trainer2.set_ai(ai2)
         self.rm = RoundManager(self.trainer1, self.trainer2)
         self.add_colleague(self.rm)
+        self.add_colleague(self.rm.mu)
         # self.mu = MoveUser()
         # self.tm = TurnManager(self.mu)
 

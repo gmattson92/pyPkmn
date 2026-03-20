@@ -115,11 +115,14 @@ class Pokemon(Colleague):
 
     def receive_event(self, event_d):
         if event_d['event_type'] == 'faint':
-            # self.sm.opponent_fainted()
-            pass
+            if event_d['pkmn'] != self:
+                self.sm.opponent_fainted()
         elif event_d['event_type'] == 'swap':
-            # self.sm.opponent_swapped()
-            pass
+            if event_d['trainer'].active != self:
+                self.sm.opponent_swapped()
+        elif event_d['event_type'] == 'hyper_beam_ko':
+            if event_d['pkmn'] != self:
+                self.sm.hyper_beam_ko()
         else:
             pass
 

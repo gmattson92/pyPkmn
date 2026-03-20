@@ -1,9 +1,10 @@
 import globals
+from mediator import Colleague
 from ui import post_message
 import random
 
 
-class MoveUser:
+class MoveUser(Colleague):
     """
     Handles all details of 'appyling' a move -- including damage, status, stat
     changes, and special effects of unique moves
@@ -70,6 +71,9 @@ class MoveUser:
         if damage != 0:
             post_message(f'{other.name} took {damage} damage!')
         other.current_hp -= damage
+        # check for a Hyper Beam KO
+        if other.is_fainted() and move.name == 'Hyper Beam':
+            self.send_event({'event_type': 'hyper_beam_ko', 'pkmn': other})
         # secondary status effects
         if move.status_accuracy:
             self.apply_status(move, user, other)
@@ -339,3 +343,6 @@ class MoveUser:
         else:
             if move.category == 'Stat':
                 post_message('The move missed!')
+
+    def receive_event(self, event_d):
+        pass
