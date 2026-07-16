@@ -71,6 +71,7 @@ class RoundManager(Colleague):
             other = (self.trainer2.active if pkmn == self.trainer1.active
                      else self.trainer1.active)
             self.tm.apply_all_recurring_damage(affected, other)
+        self._end_round_pkmn = []
 
     def receive_event(self, event_d):
         if event_d['event_type'] == 'faint':
